@@ -56,19 +56,26 @@ func (r *Runner) runActivity(ctx context.Context, activity Activity) {
 
 	alog := r.log.WithField("name", activity.Name())
 
+	placeholderShutdownCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	shutdownCtxPtr := &placeholderShutdownCtx
+	go func(shutdown *context.Context, alog *logrus.Entry) {
+		<-ctx.Done()
+		<-(*shutdown).Done()
+
+		if err := activity.Kill(); err != nil {
+			alog.WithError(err).Error("kill activity")
+		}
+	}(shutdownCtxPtr, alog)
+
 	if err := activity.Run(ctx); err != nil {
 		alog.WithError(err).Error("run activity")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), r.shutdownTimeout)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), r.shutdownTimeout)
 	defer cancel()
-
-	go func(alog *logrus.Entry) {
-		<-ctx.Done()
-		if err := activity.Kill(); err != nil {
-			alog.WithError(err).Error("kill activity")
-		}
-	}(alog)
+	*shutdownCtxPtr = shutdownCtx
 
 	if err := activity.Shutdown(ctx); err != nil {
 		alog.WithError(err).Error("shutdown activity")

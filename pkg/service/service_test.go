@@ -10,7 +10,9 @@ import (
 )
 
 type Activity struct {
-	invoked bool
+	invoked  bool
+	shutdown bool
+	killed   bool
 }
 
 func (*Activity) Name() string {
@@ -22,20 +24,39 @@ func (a *Activity) Run(_ context.Context) error {
 	return nil
 }
 
-func (*Activity) Shutdown(_ context.Context) error {
+func (a *Activity) Shutdown(_ context.Context) error {
+	a.shutdown = true
+
+	halt := make(chan struct{})
+	<-halt
+
 	return nil
 }
 
-func (*Activity) Kill() error {
+func (a *Activity) Kill() error {
+	a.killed = true
 	return nil
 }
 
 func TestServiceRun(t *testing.T) {
 	one, two := &Activity{}, &Activity{}
+
+	// Make a context that will die after a second.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	t.Cleanup(cancel)
+
 	runner := service.NewRunner(logrus.StandardLogger(), time.Millisecond*500, one, two)
-	runner.Run(context.Background())
+	runner.Run(ctx)
 
 	if !one.invoked || !two.invoked {
-		t.Error("expected activity to have been invoked, was not")
+		t.Error("expected all activities to have been invoked, were not")
+	}
+
+	if !one.shutdown || !two.shutdown {
+		t.Error("expected all activities to have been shutdown, were not")
+	}
+
+	if !one.killed || !two.killed {
+		t.Error("expected all activities to have been killed, were not")
 	}
 }
