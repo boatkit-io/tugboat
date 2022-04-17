@@ -38,10 +38,10 @@ func (w *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return h.Hijack()
 }
 
-// requestMW is a middleware that creates a request id for each request
+// RequestMW is a middleware that creates a request id for each request
 // and sets it on the header field X-Request-Id. Also logs the start and
 // end of each request.
-func requestMW(log *logrus.Logger, next http.Handler) http.Handler {
+func RequestMW(log *logrus.Logger, next http.Handler) http.Handler {
 	f := func(w http.ResponseWriter, r *http.Request) {
 
 		st := time.Now()
