@@ -31,7 +31,7 @@ func Respond(log *logrus.Logger, w http.ResponseWriter, r *http.Request, code in
 
 	if len(errs) > 0 {
 		for _, err := range errs {
-			log.WithFields(log.Fields{
+			log.WithFields(logrus.Fields{
 				"error": err,
 			}).Error("error while serving request")
 
@@ -50,7 +50,7 @@ func Respond(log *logrus.Logger, w http.ResponseWriter, r *http.Request, code in
 // RespondError sends an error response with a status code. The error is automatically logged for you.
 // If the error implements StatusCoder, the provided status code will be used.
 func RespondError(log *logrus.Logger, w http.ResponseWriter, r *http.Request, code int, err error) {
-	log.WithFields(log.Fields{
+	log.WithFields(logrus.Fields{
 		"error": err,
 	}).Error("error while serving request")
 
