@@ -20,6 +20,7 @@ type Activity interface {
 	Kill() error
 }
 
+// Runner runs Activitys.
 type Runner struct {
 	activities      []Activity
 	shutdownTimeout time.Duration
@@ -28,13 +29,21 @@ type Runner struct {
 	log             *logrus.Logger
 }
 
-func NewRunner(log *logrus.Logger, shutdownTimeout, killTimeout time.Duration, activities ...Activity) *Runner {
+// NewRunner returns a newly configured runner.
+func NewRunner(log *logrus.Logger, shutdownTimeout, killTimeout time.Duration) *Runner {
 	return &Runner{
-		activities:      activities,
 		shutdownTimeout: shutdownTimeout,
 		killTimeout:     killTimeout,
 		wg:              &sync.WaitGroup{},
 		log:             log,
+	}
+}
+
+// RegisterActivities registers any number of activities on the receiver to be ran using
+// Run.
+func (r *Runner) RegisterActivities(activities ...Activity) {
+	if len(activities) > 0 {
+		r.activities = append(r.activities, activities...)
 	}
 }
 

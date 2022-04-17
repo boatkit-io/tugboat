@@ -46,7 +46,8 @@ func TestServiceRun(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	t.Cleanup(cancel)
 
-	runner := service.NewRunner(logrus.StandardLogger(), timeout, timeout, one, two)
+	runner := service.NewRunner(logrus.StandardLogger(), timeout, timeout)
+	runner.RegisterActivities(one, two)
 	runner.Run(ctx)
 
 	if !one.invoked || !two.invoked {
