@@ -5,36 +5,74 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
+	"time"
 
-	"github.com/pkg/errors"
-	"golang.org/x/sync/errgroup"
+	"github.com/sirupsen/logrus"
 )
 
 // Activity represents a service activity to run.
 type Activity interface {
+	Name() string
 	Run(context.Context) error
-	Close(context.Context) error
+	Shutdown(context.Context) error
+	Kill() error
 }
 
-// Run runs all of the provided types that implement the Activity
-// interface.
-func Run(ctx context.Context, activities ...Activity) error {
-	g, ctx := errgroup.WithContext(ctx)
+type Runner struct {
+	activities      []Activity
+	shutdownTimeout time.Duration
+	wg              *sync.WaitGroup
+	log             *logrus.Logger
+}
 
-	for i := range activities {
-		activity := activities[i]
-		g.Go(func() error {
-			defer activity.Close(ctx)
-			return activity.Run(ctx)
-		})
+func NewRunner(log *logrus.Logger, shutdownTimeout time.Duration, activities ...Activity) *Runner {
+	return &Runner{
+		activities:      activities,
+		shutdownTimeout: shutdownTimeout,
+		wg:              &sync.WaitGroup{},
+		log:             log,
+	}
+}
+
+// Run runs all of the provided activities. Run is a blocking function.
+func (r *Runner) Run(ctx context.Context) {
+	for i := range r.activities {
+		activity := r.activities[i]
+
+		r.wg.Add(1) // Done is deferred in *Runner.runActivity.
+		go r.runActivity(ctx, activity)
 	}
 
-	if err := g.Wait(); err != nil {
-		return errors.Wrap(err, "run service activities")
+	// Block until all activities are done.
+	r.wg.Wait()
+}
+
+// runActivity runs a single activity. It is expected that *Runner.wg.Add(1) is called
+// before calling this function.
+func (r *Runner) runActivity(ctx context.Context, activity Activity) {
+	defer r.wg.Done()
+
+	alog := r.log.WithField("name", activity.Name())
+
+	if err := activity.Run(ctx); err != nil {
+		alog.WithError(err).Error("run activity")
 	}
 
-	return nil
+	ctx, cancel := context.WithTimeout(context.Background(), r.shutdownTimeout)
+	defer cancel()
+
+	go func(alog *logrus.Entry) {
+		<-ctx.Done()
+		if err := activity.Kill(); err != nil {
+			alog.WithError(err).Error("kill activity")
+		}
+	}(alog)
+
+	if err := activity.Shutdown(ctx); err != nil {
+		alog.WithError(err).Error("shutdown activity")
+	}
 }
 
 // Shutdown is a helper type that implements the Activity interface for services to
@@ -56,6 +94,11 @@ func NewShutdown(mainCancel context.CancelFunc) *Shutdown {
 	}
 }
 
+// Name returns the name of the Shutdown Activity.
+func (*Shutdown) Name() string {
+	return "shutdown"
+}
+
 // Run blocks until an os.Interrupt or syscall.SIGTERM signal is recieved, or the context
 // is canceled.
 func (s *Shutdown) Run(ctx context.Context) {
@@ -73,7 +116,12 @@ func (s *Shutdown) Run(ctx context.Context) {
 	}
 }
 
-// Close closes the Shutdown Activity.
-func (*Shutdown) Close(_ context.Context) error {
+// Shutdown is a no-op, but it implements the interface necessary for Activity.
+func (*Shutdown) Shutdown(_ context.Context) error {
+	return nil
+}
+
+// Kill is a no-op, but it implements the interface necessary for Activity.
+func (*Shutdown) Kill() error {
 	return nil
 }
