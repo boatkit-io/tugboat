@@ -40,12 +40,13 @@ func (a *Activity) Kill() error {
 
 func TestServiceRun(t *testing.T) {
 	one, two := &Activity{}, &Activity{}
+	timeout := time.Millisecond * 500 // using same timeout for kill and shutdown
 
 	// Make a context that will die after a second.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	t.Cleanup(cancel)
 
-	runner := service.NewRunner(logrus.StandardLogger(), time.Millisecond*500, one, two)
+	runner := service.NewRunner(logrus.StandardLogger(), timeout, timeout, one, two)
 	runner.Run(ctx)
 
 	if !one.invoked || !two.invoked {

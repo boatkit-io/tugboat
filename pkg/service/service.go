@@ -23,14 +23,16 @@ type Activity interface {
 type Runner struct {
 	activities      []Activity
 	shutdownTimeout time.Duration
+	killTimeout     time.Duration
 	wg              *sync.WaitGroup
 	log             *logrus.Logger
 }
 
-func NewRunner(log *logrus.Logger, shutdownTimeout time.Duration, activities ...Activity) *Runner {
+func NewRunner(log *logrus.Logger, shutdownTimeout, killTimeout time.Duration, activities ...Activity) *Runner {
 	return &Runner{
 		activities:      activities,
 		shutdownTimeout: shutdownTimeout,
+		killTimeout:     killTimeout,
 		wg:              &sync.WaitGroup{},
 		log:             log,
 	}
@@ -52,22 +54,9 @@ func (r *Runner) Run(ctx context.Context) {
 // runActivity runs a single activity. It is expected that *Runner.wg.Add(1) is called
 // before calling this function.
 func (r *Runner) runActivity(ctx context.Context, activity Activity) {
-	defer r.wg.Done()
+	defer r.wg.Done() // LIFO ensures this will be called last.
 
 	alog := r.log.WithField("name", activity.Name())
-
-	placeholderShutdownCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	shutdownCtxPtr := &placeholderShutdownCtx
-	go func(shutdown *context.Context, alog *logrus.Entry) {
-		<-ctx.Done()
-		<-(*shutdown).Done()
-
-		if err := activity.Kill(); err != nil {
-			alog.WithError(err).Error("kill activity")
-		}
-	}(shutdownCtxPtr, alog)
 
 	if err := activity.Run(ctx); err != nil {
 		alog.WithError(err).Error("run activity")
@@ -75,11 +64,32 @@ func (r *Runner) runActivity(ctx context.Context, activity Activity) {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), r.shutdownTimeout)
 	defer cancel()
-	*shutdownCtxPtr = shutdownCtx
 
-	if err := activity.Shutdown(ctx); err != nil {
-		alog.WithError(err).Error("shutdown activity")
+	shutdownReturned := make(chan struct{})
+	go func() {
+		defer close(shutdownReturned)
+		if err := activity.Shutdown(shutdownCtx); err != nil {
+			alog.WithError(err).Error("shutdown activity")
+		}
+	}()
+
+	// Block until we've either hit our shutdown timeout or shutdown has returned.
+	select {
+	case <-shutdownCtx.Done():
+	case <-shutdownReturned:
 	}
+
+	killCtx, cancel := context.WithTimeout(context.Background(), r.killTimeout)
+	defer cancel()
+
+	go func() {
+		if err := activity.Kill(); err != nil {
+			alog.WithError(err).Error("kill activity")
+		}
+	}()
+
+	// Block until we've hit our kill timeout.
+	<-killCtx.Done()
 }
 
 // Shutdown is a helper type that implements the Activity interface for services to
