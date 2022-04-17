@@ -67,8 +67,18 @@ func (r *Runner) runActivity(ctx context.Context, activity Activity) {
 
 	alog := r.log.WithField("name", activity.Name())
 
-	if err := activity.Run(ctx); err != nil {
-		alog.WithError(err).Error("run activity")
+	runReturned := make(chan struct{})
+	go func() {
+		defer close(runReturned)
+		if err := activity.Run(ctx); err != nil {
+			alog.WithError(err).Error("run activity")
+		}
+	}()
+
+	// Block until the main context has been canceled or run has returned.
+	select {
+	case <-ctx.Done():
+	case <-runReturned:
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), r.shutdownTimeout)
