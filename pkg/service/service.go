@@ -27,6 +27,17 @@ type Runner struct {
 	killTimeout     time.Duration
 	wg              *sync.WaitGroup
 	log             *logrus.Logger
+
+	// errored is closed whenever any Activity.Run has returned a non-nil error.
+	errored chan struct{}
+
+	// Since you cannot detect whether or not a channel is closed without reading
+	// from it, this is set to true when errored has been closed. The reason this
+	// is all necessary is because we need the errored channel in the runActivity
+	// function so when it is closed it automatically sends on the select it's used
+	// in, cancelling the wrapped Run context and telling all of the other Activitys
+	// to stop running.
+	erroredClosed bool
 }
 
 // NewRunner returns a newly configured runner.
@@ -36,6 +47,7 @@ func NewRunner(log *logrus.Logger, shutdownTimeout, killTimeout time.Duration) *
 		killTimeout:     killTimeout,
 		wg:              &sync.WaitGroup{},
 		log:             log,
+		errored:         make(chan struct{}),
 	}
 }
 
@@ -67,10 +79,17 @@ func (r *Runner) runActivity(ctx context.Context, activity Activity) {
 
 	alog := r.log.WithField("name", activity.Name())
 
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	runReturned := make(chan struct{})
 	go func() {
 		defer close(runReturned)
-		if err := activity.Run(ctx); err != nil {
+		if err := activity.Run(runCtx); err != nil {
+			if !r.erroredClosed {
+				close(r.errored)
+			}
+
 			alog.WithError(err).Error("run activity")
 		}
 	}()
@@ -79,6 +98,8 @@ func (r *Runner) runActivity(ctx context.Context, activity Activity) {
 	select {
 	case <-ctx.Done():
 	case <-runReturned:
+	case <-r.errored:
+		cancel()
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), r.shutdownTimeout)
