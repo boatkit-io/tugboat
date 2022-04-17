@@ -147,6 +147,31 @@ func TestServiceRun(t *testing.T) {
 		longLived.validate(t, true)
 	})
 
+	t.Run("OneErrorOneLongLivedButHangs", func(t *testing.T) {
+		t.Parallel()
+
+		errActivity := NewActivity("error", func(_ context.Context) error {
+			return errors.New("error")
+		})
+
+		longLived := NewActivity("longLived", func(ctx context.Context) error {
+			halt := make(chan struct{})
+			<-halt // never return
+			return nil
+		})
+
+		// Make a context that will die after a second.
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		t.Cleanup(cancel)
+
+		runner := service.NewRunner(logrus.StandardLogger(), timeout, timeout)
+		runner.RegisterActivities(errActivity, longLived)
+		runner.Run(ctx)
+
+		errActivity.validate(t, false)
+		longLived.validate(t, false)
+	})
+
 	t.Run("OneShortLivedOneLongLived", func(t *testing.T) {
 		t.Parallel()
 
