@@ -94,7 +94,10 @@ func TestServiceRun(t *testing.T) {
 
 		runner := service.NewRunner(logrus.StandardLogger(), timeout, timeout)
 		runner.RegisterActivities(one, two)
-		runner.Run(ctx)
+
+		if e, a := 0, runner.Run(ctx); e != a {
+			t.Errorf("expected exit code returned from run to be %d, got %d", e, a)
+		}
 
 		one.validate(t, false)
 		two.validate(t, false)
@@ -115,7 +118,10 @@ func TestServiceRun(t *testing.T) {
 
 		runner := service.NewRunner(logrus.StandardLogger(), timeout, timeout)
 		runner.RegisterActivities(one, two)
-		runner.Run(ctx)
+
+		if e, a := 0, runner.Run(ctx); e != a {
+			t.Errorf("expected exit code returned from run to be %d, got %d", e, a)
+		}
 
 		// The cancel error is different than the one that happens when the timeout
 		// hits for a context, hence false being passed as the second parameter.
@@ -141,7 +147,10 @@ func TestServiceRun(t *testing.T) {
 
 		runner := service.NewRunner(logrus.StandardLogger(), timeout, timeout)
 		runner.RegisterActivities(errActivity, longLived)
-		runner.Run(ctx)
+
+		if e, a := 1, runner.Run(ctx); e != a {
+			t.Errorf("expected exit code returned from run to be %d, got %d", e, a)
+		}
 
 		errActivity.validate(t, false)
 		longLived.validate(t, true)
@@ -166,7 +175,10 @@ func TestServiceRun(t *testing.T) {
 
 		runner := service.NewRunner(logrus.StandardLogger(), timeout, timeout)
 		runner.RegisterActivities(errActivity, longLived)
-		runner.Run(ctx)
+
+		if e, a := 1, runner.Run(ctx); e != a {
+			t.Errorf("expected exit code returned from run to be %d, got %d", e, a)
+		}
 
 		errActivity.validate(t, false)
 		longLived.validate(t, false)
@@ -186,7 +198,10 @@ func TestServiceRun(t *testing.T) {
 
 		runner := service.NewRunner(logrus.StandardLogger(), timeout, timeout)
 		runner.RegisterActivities(shortLived, longLived)
-		runner.Run(ctx)
+
+		if e, a := 0, runner.Run(ctx); e != a {
+			t.Errorf("expected exit code returned from run to be %d, got %d", e, a)
+		}
 
 		shortLived.validate(t, false)
 		longLived.validate(t, false)
