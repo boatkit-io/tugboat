@@ -7,6 +7,9 @@ import (
 	"syscall"
 )
 
+// Ensure that Shutdown implements the Activity interface.
+var _ Activity = &Shutdown{}
+
 // Shutdown is a helper type that implements the Activity interface for services to
 // use for graceful shutdown. Use the NewShutdown factory function to generate an
 // instance of this.
@@ -33,7 +36,7 @@ func (*Shutdown) Name() string {
 
 // Run blocks until an os.Interrupt or syscall.SIGTERM signal is recieved, or the context
 // is canceled.
-func (s *Shutdown) Run(ctx context.Context) {
+func (s *Shutdown) Run(ctx context.Context) error {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
@@ -46,6 +49,8 @@ func (s *Shutdown) Run(ctx context.Context) {
 		// to shutdown, this doesn't hurt anything.
 		s.mainCancel()
 	}
+
+	return nil
 }
 
 // Shutdown is a no-op, but it implements the interface necessary for Activity.
