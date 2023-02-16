@@ -1,2 +1,3 @@
 lintroller:
-  tier: platinum
+  doculint:
+    enabled: true
