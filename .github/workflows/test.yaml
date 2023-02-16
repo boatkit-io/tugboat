@@ -33,6 +33,9 @@ jobs:
         uses: asdf-vm/actions/install@v1
       ### END
 
+      - name: lintroller
+        run: go run github.com/getoutreach/lintroller/cmd/lintroller@v1.16.0 -config lintroller.yaml ./...
+
       - uses: paambaati/codeclimate-action@v3.0.0
         env:
           CC_TEST_REPORTER_ID: ${{ secrets.CODE_CLIMATE_TOKEN }}
