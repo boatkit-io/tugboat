@@ -26,7 +26,7 @@ type Channel struct {
 
 // NewChannel returns a Channel object based on the given options.  ChannelOptions are required settings, and then you can optionally add
 // more ChannelOption objects for various optional options.
-func NewChannel(ctx context.Context, log *logrus.Logger, ChannelOptions ChannelOptions, opts ...ChannelOption) (*Channel, error) {
+func NewChannel(log *logrus.Logger, ChannelOptions ChannelOptions, opts ...ChannelOption) *Channel {
 	c := Channel{
 		ChannelOptions: ChannelOptions,
 		log:            log,
@@ -40,7 +40,7 @@ func NewChannel(ctx context.Context, log *logrus.Logger, ChannelOptions ChannelO
 		opts[i](&c)
 	}
 
-	return &c, nil
+	return &c
 }
 
 // Run opens the canbus channel and starts listening.  This will also, as needed, use netlink to actually call into the OS
@@ -132,7 +132,7 @@ func (c *Channel) Run(ctx context.Context) error {
 }
 
 // Close shuts down the channel
-func (c *Channel) Close(ctx context.Context) error {
+func (c *Channel) Close() error {
 	if c.bus == nil {
 		return nil
 	}
