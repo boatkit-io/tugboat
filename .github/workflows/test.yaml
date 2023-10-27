@@ -14,10 +14,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
+      ### ASDF Logic
+      - name: Setup asdf
+        uses: asdf-vm/actions/setup@v1
+      - name: Install asdf plugins
+        uses: asdf-vm/actions/plugins-add@v1
+      - name: Install asdf languages
+        uses: asdf-vm/actions/install@v1
+      ### END
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
           version: v1.51.1
+      - name: lintroller
+        run: go run github.com/getoutreach/lintroller/cmd/lintroller@v1.17.0 -config lintroller.yaml ./...
+
   test:
     name: go test
     runs-on: ubuntu-latest
@@ -32,9 +45,6 @@ jobs:
       - name: Install asdf languages
         uses: asdf-vm/actions/install@v1
       ### END
-
-      - name: lintroller
-        run: go run github.com/getoutreach/lintroller/cmd/lintroller@v1.16.0 -config lintroller.yaml ./...
 
       - uses: paambaati/codeclimate-action@v3.0.0
         env:
