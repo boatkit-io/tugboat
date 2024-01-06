@@ -25,7 +25,7 @@ jobs:
       ### END
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@v3
         with:
           version: v1.51.1
       - name: lintroller
