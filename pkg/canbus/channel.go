@@ -61,13 +61,20 @@ func (c *Channel) Run(ctx context.Context) error {
 	canLink := link.(*netlink.Can)
 
 	if canLink.Attrs().OperState == netlink.OperUp {
+		bounce := false
 		if canLink.BitRate != uint32(c.bitRate) {
-			c.log.WithField("bitRate", canLink.BitRate).Info("Channel currentl has wrong bitrate, bringing down")
+			c.log.WithField("bitRate", canLink.BitRate).Info("Channel currently has wrong bitrate, bringing down")
+			bounce = true
+		} else if c.ChannelOptions.ForceBounceInterface {
+			c.log.Info("Bouncing channel")
+			bounce = true
+		}
 
+		if bounce {
 			cmd := exec.CommandContext(ctx, "ip", "link", "set", c.ChannelOptions.CanInterfaceName, "down")
 			if output, err := cmd.Output(); err != nil {
 				logBase := c.log.WithField("cmd", strings.Join(cmd.Args, " ")).WithField("output", string(output))
-				if errCast, worked := err.(*exec.ExitError); !worked {
+				if errCast, worked := err.(*exec.ExitError); worked {
 					logBase = logBase.WithField("stderr", string(errCast.Stderr))
 				}
 				logBase.Error("Ip link set down failed")
@@ -91,27 +98,12 @@ func (c *Channel) Run(ctx context.Context) error {
 		cmd := exec.CommandContext(ctx, "ip", "link", "set", c.ChannelOptions.CanInterfaceName, "up", "type", "can", "bitrate", strconv.Itoa(int(c.bitRate)))
 		if output, err := cmd.Output(); err != nil {
 			logBase := c.log.WithField("cmd", strings.Join(cmd.Args, " ")).WithField("output", string(output))
-			if errCast, worked := err.(*exec.ExitError); !worked {
+			if errCast, worked := err.(*exec.ExitError); worked {
 				logBase = logBase.WithField("stderr", string(errCast.Stderr))
 			}
 			logBase.Error("Ip link set up failed")
 			return err
 		}
-
-		// TODO(ddr): Someday figure out how the hell to make the netlink stuff work
-
-		// fmt.Printf("CanAttrs: %+v\n", *canLink)
-		// canLink.BitRate = 250000
-
-		// if err := netlink.LinkModify(canLink); err != nil {
-		// 	return err
-		// }
-
-		// fmt.Println("Modified link")
-
-		// if err := netlink.LinkSetUp(canLink); err != nil {
-		// 	return err
-		// }
 	}
 
 	// Open the brutella can bus
