@@ -4,8 +4,9 @@ import "github.com/brutella/can"
 
 // ChannelOptions is a type that contains required options on a Channel.
 type ChannelOptions struct {
-	CanInterfaceName string
-	MessageHandler   can.HandlerFunc
+	CanInterfaceName     string
+	ForceBounceInterface bool
+	MessageHandler       can.HandlerFunc
 }
 
 // ChannelOption is the type used to apply function options to Channel.

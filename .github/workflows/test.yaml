@@ -13,40 +13,28 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-
-      ### ASDF Logic
-      - name: Setup asdf
-        uses: asdf-vm/actions/setup@v1
-      - name: Install asdf plugins
-        uses: asdf-vm/actions/plugins-add@v1
-      - name: Install asdf languages
-        uses: asdf-vm/actions/install@v1
-      ### END
-
+      - uses: actions/checkout@v4
+      - name: Install Tool Versions
+        uses: jdx/mise-action@v2
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.51.1
+          args: --timeout=5m
       - name: lintroller
-        run: go run github.com/getoutreach/lintroller/cmd/lintroller@v1.17.0 -config lintroller.yaml ./...
+        run: go run github.com/getoutreach/lintroller/cmd/lintroller@v1.18.2 -config lintroller.yaml ./...
 
   test:
     name: go test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-
-      ### ASDF Logic
-      - name: Setup asdf
-        uses: asdf-vm/actions/setup@v1
-      - name: Install asdf plugins
-        uses: asdf-vm/actions/plugins-add@v1
-      - name: Install asdf languages
-        uses: asdf-vm/actions/install@v1
-      ### END
-
-      - uses: paambaati/codeclimate-action@v3.0.0
+      - uses: actions/checkout@v4
+      - name: Install Tool Versions
+        uses: jdx/mise-action@v2
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: paambaati/codeclimate-action@v3.2.0
         env:
           CC_TEST_REPORTER_ID: ${{ secrets.CODE_CLIMATE_TOKEN }}
         with:
