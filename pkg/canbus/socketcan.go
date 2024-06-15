@@ -13,10 +13,17 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-// Channel represents a single canbus channel for sending/receiving CAN frames
-type Channel struct {
-	bitRate        int32
-	ChannelOptions ChannelOptions
+// SocketCANChannelOptions is a type that contains required options on a SocketCANChannel.
+type SocketCANChannelOptions struct {
+	InterfaceName        string
+	BitRate              int
+	ForceBounceInterface bool
+	MessageHandler       can.HandlerFunc
+}
+
+// SocketCANChannel represents a single canbus channel for sending/receiving CAN frames
+type SocketCANChannel struct {
+	options SocketCANChannelOptions
 
 	bus        *can.Bus
 	busHandler can.Handler
@@ -24,20 +31,11 @@ type Channel struct {
 	log *logrus.Logger
 }
 
-// NewChannel returns a Channel object based on the given options.  ChannelOptions are required settings, and then you can optionally add
-// more ChannelOption objects for various optional options.
-func NewChannel(log *logrus.Logger, ChannelOptions ChannelOptions, opts ...ChannelOption) *Channel {
-	c := Channel{
-		ChannelOptions: ChannelOptions,
-		log:            log,
-	}
-
-	// Apply defaults
-	c.bitRate = DefaultBitRate
-
-	// Apply functional options.
-	for i := range opts {
-		opts[i](&c)
+// NewSocketCANChannel returns a Channel object based on SocketCAN and the given options.  ChannelOptions are required settings.
+func NewSocketCANChannel(log *logrus.Logger, options SocketCANChannelOptions) *SocketCANChannel {
+	c := SocketCANChannel{
+		options: options,
+		log:     log,
 	}
 
 	return &c
@@ -45,13 +43,13 @@ func NewChannel(log *logrus.Logger, ChannelOptions ChannelOptions, opts ...Chann
 
 // Run opens the canbus channel and starts listening.  This will also, as needed, use netlink to actually call into the OS
 // to start the channel and/or set the bitrate, as needed.
-func (c *Channel) Run(ctx context.Context) error {
+func (c *SocketCANChannel) Run(ctx context.Context) error {
 	// Referencing https://github.com/angelodlfrtr/go-can/blob/master/transports/socketcan.go
 
 	// Use netlink to make sure the interface is up
-	link, err := netlink.LinkByName(c.ChannelOptions.CanInterfaceName)
+	link, err := netlink.LinkByName(c.options.InterfaceName)
 	if err != nil {
-		return fmt.Errorf("no link found for %v: %v", c.ChannelOptions.CanInterfaceName, err)
+		return fmt.Errorf("no link found for %v: %v", c.options.InterfaceName, err)
 	}
 
 	if link.Type() != "can" {
@@ -62,16 +60,16 @@ func (c *Channel) Run(ctx context.Context) error {
 
 	if canLink.Attrs().OperState == netlink.OperUp {
 		bounce := false
-		if canLink.BitRate != uint32(c.bitRate) {
+		if canLink.BitRate != uint32(c.options.BitRate) {
 			c.log.WithField("bitRate", canLink.BitRate).Info("Channel currently has wrong bitrate, bringing down")
 			bounce = true
-		} else if c.ChannelOptions.ForceBounceInterface {
+		} else if c.options.ForceBounceInterface {
 			c.log.Info("Bouncing channel")
 			bounce = true
 		}
 
 		if bounce {
-			cmd := exec.CommandContext(ctx, "ip", "link", "set", c.ChannelOptions.CanInterfaceName, "down")
+			cmd := exec.CommandContext(ctx, "ip", "link", "set", c.options.InterfaceName, "down")
 			if output, err := cmd.Output(); err != nil {
 				logBase := c.log.WithField("cmd", strings.Join(cmd.Args, " ")).WithField("output", string(output))
 				if errCast, worked := err.(*exec.ExitError); worked {
@@ -82,9 +80,9 @@ func (c *Channel) Run(ctx context.Context) error {
 			}
 
 			// Re-fetch info
-			link, err = netlink.LinkByName(c.ChannelOptions.CanInterfaceName)
+			link, err = netlink.LinkByName(c.options.InterfaceName)
 			if err != nil {
-				return fmt.Errorf("no link found for %v: %v", c.ChannelOptions.CanInterfaceName, err)
+				return fmt.Errorf("no link found for %v: %v", c.options.InterfaceName, err)
 			}
 
 			canLink = link.(*netlink.Can)
@@ -92,10 +90,11 @@ func (c *Channel) Run(ctx context.Context) error {
 	}
 
 	if canLink.Attrs().OperState == netlink.OperDown {
-		c.log.WithField("canName", c.ChannelOptions.CanInterfaceName).WithField("bitRate", c.bitRate).Info("Link is down, bringing up link")
+		c.log.WithField("canName", c.options.InterfaceName).WithField("bitRate", c.options.BitRate).Info("Link is down, bringing up link")
 
 		// ip link set can1 up type can bitrate 250000
-		cmd := exec.CommandContext(ctx, "ip", "link", "set", c.ChannelOptions.CanInterfaceName, "up", "type", "can", "bitrate", strconv.Itoa(int(c.bitRate)))
+		cmd := exec.CommandContext(ctx, "ip", "link", "set", c.options.InterfaceName, "up", "type", "can", "bitrate",
+			strconv.Itoa(int(c.options.BitRate)))
 		if output, err := cmd.Output(); err != nil {
 			logBase := c.log.WithField("cmd", strings.Join(cmd.Args, " ")).WithField("output", string(output))
 			if errCast, worked := err.(*exec.ExitError); worked {
@@ -107,24 +106,24 @@ func (c *Channel) Run(ctx context.Context) error {
 	}
 
 	// Open the brutella can bus
-	bus, err := can.NewBusForInterfaceWithName(c.ChannelOptions.CanInterfaceName)
+	bus, err := can.NewBusForInterfaceWithName(c.options.InterfaceName)
 	if err != nil {
 		return err
 	}
 
 	c.bus = bus
-	c.busHandler = can.NewHandler(c.ChannelOptions.MessageHandler)
+	c.busHandler = can.NewHandler(c.options.MessageHandler)
 	c.bus.Subscribe(c.busHandler)
 
-	c.log.WithField("canName", c.ChannelOptions.CanInterfaceName).
-		Info("opened connection and listening")
+	c.log.WithField("interfaceName", c.options.InterfaceName).
+		Info("Opened SocketCAN and listening")
 
 	// Start listening for messages
 	return bus.ConnectAndPublish()
 }
 
 // Close shuts down the channel
-func (c *Channel) Close() error {
+func (c *SocketCANChannel) Close() error {
 	if c.bus == nil {
 		return nil
 	}
@@ -138,6 +137,6 @@ func (c *Channel) Close() error {
 }
 
 // WriteFrame will send a CAN frame to the channel
-func (c *Channel) WriteFrame(frame can.Frame) error {
+func (c *SocketCANChannel) WriteFrame(frame can.Frame) error {
 	return c.bus.Publish(frame)
 }

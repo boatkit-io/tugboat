@@ -11,6 +11,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20221214185949-378a404a26f0
+	go.bug.st/serial v1.6.2
 )
 
 require (
@@ -20,4 +21,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-require golang.org/x/sys v0.21.0 // indirect
+require (
+	github.com/creack/goselect v0.1.2 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+)
