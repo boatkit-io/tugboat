@@ -35,10 +35,10 @@ const (
 
 // USBCANChannelOptions is a type that contains required options on a SocketCANChannel.
 type USBCANChannelOptions struct {
-	SerialInterfaceName string
-	SerialBaudRate      int
-	BitRate             int
-	FrameHandler        can.HandlerFunc
+	SerialPortName string
+	SerialBaudRate int
+	BitRate        int
+	FrameHandler   can.HandlerFunc
 }
 
 // USBCANChannel represents a single USB-CAN-based canbus channel for sending/receiving CAN frames
@@ -65,7 +65,7 @@ func (c *USBCANChannel) Run(ctx context.Context) error {
 	mode := &serial.Mode{
 		BaudRate: c.options.SerialBaudRate,
 	}
-	port, err := serial.Open("/dev/"+c.options.SerialInterfaceName, mode)
+	port, err := serial.Open(c.options.SerialPortName, mode)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (c *USBCANChannel) Run(ctx context.Context) error {
 		return err
 	}
 
-	c.log.WithField("interfaceName", c.options.SerialInterfaceName).
+	c.log.WithField("portName", c.options.SerialPortName).
 		Info("Opened USBCAN and listening")
 
 	pending := []byte{}

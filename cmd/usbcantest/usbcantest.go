@@ -11,10 +11,11 @@ import (
 
 func main() {
 	ctx := context.Background()
+
 	options := canbus.USBCANChannelOptions{
-		SerialInterfaceName: "tty.usbserial-210",
-		SerialBaudRate:      2000000,
-		BitRate:             250000,
+		SerialPortName: "/dev/tty.usbserial-210",
+		SerialBaudRate: 2000000,
+		BitRate:        250000,
 		FrameHandler: func(frame can.Frame) {
 			fmt.Printf("handled frame: %+v\n", frame)
 		},
