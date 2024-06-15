@@ -13,6 +13,8 @@ const (
 	Mile DistanceUnit = 2
 	// NauticalMile is a nautical mile
 	NauticalMile DistanceUnit = 3
+	// Fathon is a fathom
+	Fathom DistanceUnit = 4
 )
 
 // distanceConversions is a helper for doing unit conversions on distance units
@@ -21,6 +23,7 @@ var distanceConversions = map[DistanceUnit]float32{
 	Foot:         5280,
 	Mile:         1,
 	NauticalMile: 1.15078,
+	Fathom:       880,
 }
 
 // Distance is a generic Unit structure that represents distances/lengths
