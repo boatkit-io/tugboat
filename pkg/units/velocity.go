@@ -11,6 +11,8 @@ const (
 	Knots VelocityUnit = iota
 	// Mph is Miles per hour
 	Mph VelocityUnit = iota
+	// Kph is Kilometers per hour
+	Kph VelocityUnit = iota
 )
 
 // velocityConversions is a helper for doing unit conversions on VelocityUnits
@@ -18,6 +20,7 @@ var velocityConversions = map[VelocityUnit]float32{
 	MetersPerSecond: 0.514444444444,
 	Knots:           1,
 	Mph:             1.15078,
+	Kph:             1.852,
 }
 
 // Velocity is a generic Unit structure that represents velocities (speeds)

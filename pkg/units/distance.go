@@ -13,7 +13,7 @@ const (
 	Mile DistanceUnit = 2
 	// NauticalMile is a nautical mile
 	NauticalMile DistanceUnit = 3
-	// Fathon is a fathom
+	// Fathom is a fathom
 	Fathom DistanceUnit = 4
 )
 
