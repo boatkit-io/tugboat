@@ -189,7 +189,12 @@ func (c *USBCANChannel) parseFrames(bufAddr *[]byte) error {
 
 // Close shuts down the channel
 func (c *USBCANChannel) Close() error {
-	return c.port.Close()
+	if c.port != nil {
+		if err := c.port.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // WriteFrame will send a CAN frame to the channel
