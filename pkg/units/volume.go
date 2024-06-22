@@ -21,11 +21,7 @@ var volumeConversions = map[VolumeUnit]float32{
 }
 
 // Volume is a generic Unit structure that represents volumes/capacities
-type Volume struct {
-	Value    float32
-	Unit     VolumeUnit
-	UnitType string
-}
+type Volume Unit[VolumeUnit]
 
 // NewVolume creates a volume unit of a given type and value
 func NewVolume(u VolumeUnit, value float32) Volume {

@@ -27,11 +27,7 @@ var distanceConversions = map[DistanceUnit]float32{
 }
 
 // Distance is a generic Unit structure that represents distances/lengths
-type Distance struct {
-	Value    float32
-	Unit     DistanceUnit
-	UnitType string
-}
+type Distance Unit[DistanceUnit]
 
 // NewDistance creates a distance unit of a given type and value
 func NewDistance(u DistanceUnit, value float32) Distance {

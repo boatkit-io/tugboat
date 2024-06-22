@@ -21,11 +21,7 @@ var pressureConversions = map[PressureUnit]float32{
 }
 
 // Pressure is a generic Unit structure that represents pressures
-type Pressure struct {
-	Value    float32
-	Unit     PressureUnit
-	UnitType string
-}
+type Pressure Unit[PressureUnit]
 
 // NewPressure creates a pressure unit of a given type and value
 func NewPressure(u PressureUnit, value float32) Pressure {

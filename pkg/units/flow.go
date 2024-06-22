@@ -21,11 +21,7 @@ var flowConversions = map[FlowUnit]float32{
 }
 
 // Flow is a generic Unit structure that represents flow volumes over time
-type Flow struct {
-	Value    float32
-	Unit     FlowUnit
-	UnitType string
-}
+type Flow Unit[FlowUnit]
 
 // NewFlow creates a flow unit of a given type and value
 func NewFlow(u FlowUnit, value float32) Flow {

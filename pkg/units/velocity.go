@@ -24,11 +24,7 @@ var velocityConversions = map[VelocityUnit]float32{
 }
 
 // Velocity is a generic Unit structure that represents velocities (speeds)
-type Velocity struct {
-	Value    float32
-	Unit     VelocityUnit
-	UnitType string
-}
+type Velocity Unit[VelocityUnit]
 
 // NewVelocity creates a velocity unit of a given type and value
 func NewVelocity(u VelocityUnit, value float32) Velocity {

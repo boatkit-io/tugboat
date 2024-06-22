@@ -16,11 +16,7 @@ const (
 )
 
 // Temperature is a generic Unit structure that represents temperatures
-type Temperature struct {
-	Value    float32
-	Unit     TemperatureUnit
-	UnitType string
-}
+type Temperature Unit[TemperatureUnit]
 
 // NewTemperature creates a temperature unit of a given type and value
 func NewTemperature(u TemperatureUnit, value float32) Temperature {
