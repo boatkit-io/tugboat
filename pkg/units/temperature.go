@@ -1,6 +1,9 @@
 package units
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // TemperatureUnit is an enum for all temperature unit types
 type TemperatureUnit int
@@ -18,12 +21,24 @@ const (
 // Temperature is a generic Unit structure that represents temperatures
 type Temperature Unit[TemperatureUnit]
 
+// MarshalJSON is a custom marshaler for the unit type to add the UnitType string
+func (u *Temperature) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Value    float32 `json:"value"`
+		Unit     int     `json:"unit"`
+		UnitType string  `json:"unitType"`
+	}{
+		Value:    u.Value,
+		Unit:     int(u.Unit),
+		UnitType: "temp",
+	})
+}
+
 // NewTemperature creates a temperature unit of a given type and value
 func NewTemperature(u TemperatureUnit, value float32) Temperature {
 	return Temperature{
-		Unit:     u,
-		Value:    value,
-		UnitType: "temp",
+		Unit:  u,
+		Value: value,
 	}
 }
 

@@ -1,5 +1,7 @@
 package units
 
+import "encoding/json"
+
 // VelocityUnit is an enum for all velocity unit types
 type VelocityUnit int
 
@@ -26,12 +28,24 @@ var velocityConversions = map[VelocityUnit]float32{
 // Velocity is a generic Unit structure that represents velocities (speeds)
 type Velocity Unit[VelocityUnit]
 
+// MarshalJSON is a custom marshaler for the unit type to add the UnitType string
+func (u *Velocity) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Value    float32 `json:"value"`
+		Unit     int     `json:"unit"`
+		UnitType string  `json:"unitType"`
+	}{
+		Value:    u.Value,
+		Unit:     int(u.Unit),
+		UnitType: "spd",
+	})
+}
+
 // NewVelocity creates a velocity unit of a given type and value
 func NewVelocity(u VelocityUnit, value float32) Velocity {
 	return Velocity{
-		Unit:     u,
-		Value:    value,
-		UnitType: "spd",
+		Unit:  u,
+		Value: value,
 	}
 }
 

@@ -1,5 +1,7 @@
 package units
 
+import "encoding/json"
+
 // DistanceUnit is an enum for all distance unit types
 type DistanceUnit int
 
@@ -29,12 +31,24 @@ var distanceConversions = map[DistanceUnit]float32{
 // Distance is a generic Unit structure that represents distances/lengths
 type Distance Unit[DistanceUnit]
 
+// MarshalJSON is a custom marshaler for the unit type to add the UnitType string
+func (u *Distance) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Value    float32 `json:"value"`
+		Unit     int     `json:"unit"`
+		UnitType string  `json:"unitType"`
+	}{
+		Value:    u.Value,
+		Unit:     int(u.Unit),
+		UnitType: "dist",
+	})
+}
+
 // NewDistance creates a distance unit of a given type and value
 func NewDistance(u DistanceUnit, value float32) Distance {
 	return Distance{
-		Unit:     u,
-		Value:    value,
-		UnitType: "dist",
+		Unit:  u,
+		Value: value,
 	}
 }
 

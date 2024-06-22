@@ -1,5 +1,7 @@
 package units
 
+import "encoding/json"
+
 // VolumeUnit is an enum for all volume unit types
 type VolumeUnit int
 
@@ -23,12 +25,24 @@ var volumeConversions = map[VolumeUnit]float32{
 // Volume is a generic Unit structure that represents volumes/capacities
 type Volume Unit[VolumeUnit]
 
+// MarshalJSON is a custom marshaler for the unit type to add the UnitType string
+func (u *Volume) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Value    float32 `json:"value"`
+		Unit     int     `json:"unit"`
+		UnitType string  `json:"unitType"`
+	}{
+		Value:    u.Value,
+		Unit:     int(u.Unit),
+		UnitType: "vol",
+	})
+}
+
 // NewVolume creates a volume unit of a given type and value
 func NewVolume(u VolumeUnit, value float32) Volume {
 	return Volume{
-		Unit:     u,
-		Value:    value,
-		UnitType: "vol",
+		Unit:  u,
+		Value: value,
 	}
 }
 

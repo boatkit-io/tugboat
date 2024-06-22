@@ -1,5 +1,7 @@
 package units
 
+import "encoding/json"
+
 // PressureUnit is an enum for all pressure unit types
 type PressureUnit int
 
@@ -23,12 +25,24 @@ var pressureConversions = map[PressureUnit]float32{
 // Pressure is a generic Unit structure that represents pressures
 type Pressure Unit[PressureUnit]
 
+// MarshalJSON is a custom marshaler for the unit type to add the UnitType string
+func (u *Pressure) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Value    float32 `json:"value"`
+		Unit     int     `json:"unit"`
+		UnitType string  `json:"unitType"`
+	}{
+		Value:    u.Value,
+		Unit:     int(u.Unit),
+		UnitType: "pres",
+	})
+}
+
 // NewPressure creates a pressure unit of a given type and value
 func NewPressure(u PressureUnit, value float32) Pressure {
 	return Pressure{
-		Unit:     u,
-		Value:    value,
-		UnitType: "pres",
+		Unit:  u,
+		Value: value,
 	}
 }
 

@@ -1,5 +1,7 @@
 package units
 
+import "encoding/json"
+
 // FlowUnit is an enum for all flow unit types
 type FlowUnit int
 
@@ -23,12 +25,24 @@ var flowConversions = map[FlowUnit]float32{
 // Flow is a generic Unit structure that represents flow volumes over time
 type Flow Unit[FlowUnit]
 
+// MarshalJSON is a custom marshaler for the unit type to add the UnitType string
+func (u *Flow) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Value    float32 `json:"value"`
+		Unit     int     `json:"unit"`
+		UnitType string  `json:"unitType"`
+	}{
+		Value:    u.Value,
+		Unit:     int(u.Unit),
+		UnitType: "flow",
+	})
+}
+
 // NewFlow creates a flow unit of a given type and value
 func NewFlow(u FlowUnit, value float32) Flow {
 	return Flow{
-		Unit:     u,
-		Value:    value,
-		UnitType: "flow",
+		Unit:  u,
+		Value: value,
 	}
 }
 

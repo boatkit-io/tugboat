@@ -5,7 +5,6 @@ package units
 
 // Unit is a base type for all other unit structs
 type Unit[T ~int] struct {
-	Value    float32 `json:"value"`
-	Unit     T       `json:"unit"`
-	UnitType string  `json:"unitType"`
+	Value float32
+	Unit  T
 }
