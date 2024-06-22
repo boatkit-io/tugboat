@@ -22,7 +22,7 @@ const (
 type Temperature Unit[TemperatureUnit]
 
 // MarshalJSON is a custom marshaler for the unit type to add the UnitType string
-func (u *Temperature) MarshalJSON() ([]byte, error) {
+func (u Temperature) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		Value    float32 `json:"value"`
 		Unit     int     `json:"unit"`

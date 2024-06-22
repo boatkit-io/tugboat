@@ -26,7 +26,7 @@ var volumeConversions = map[VolumeUnit]float32{
 type Volume Unit[VolumeUnit]
 
 // MarshalJSON is a custom marshaler for the unit type to add the UnitType string
-func (u *Volume) MarshalJSON() ([]byte, error) {
+func (u Volume) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		Value    float32 `json:"value"`
 		Unit     int     `json:"unit"`

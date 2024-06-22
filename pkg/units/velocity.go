@@ -29,7 +29,7 @@ var velocityConversions = map[VelocityUnit]float32{
 type Velocity Unit[VelocityUnit]
 
 // MarshalJSON is a custom marshaler for the unit type to add the UnitType string
-func (u *Velocity) MarshalJSON() ([]byte, error) {
+func (u Velocity) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		Value    float32 `json:"value"`
 		Unit     int     `json:"unit"`

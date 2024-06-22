@@ -32,7 +32,7 @@ var distanceConversions = map[DistanceUnit]float32{
 type Distance Unit[DistanceUnit]
 
 // MarshalJSON is a custom marshaler for the unit type to add the UnitType string
-func (u *Distance) MarshalJSON() ([]byte, error) {
+func (u Distance) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		Value    float32 `json:"value"`
 		Unit     int     `json:"unit"`
