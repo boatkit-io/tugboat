@@ -14,29 +14,29 @@ import (
 const (
 	// Kelvin is a TemperatureUnit of type Kelvin.
 	Kelvin TemperatureUnit = iota
-	// Farenheit is a TemperatureUnit of type Farenheit.
-	Farenheit
+	// Fahrenheit is a TemperatureUnit of type Fahrenheit.
+	Fahrenheit
 	// Celsius is a TemperatureUnit of type Celsius.
 	Celsius
 )
 
 var ErrInvalidTemperatureUnit = errors.New("not a valid TemperatureUnit")
 
-const _TemperatureUnitName = "KelvinFarenheitCelsius"
+const _TemperatureUnitName = "KelvinFahrenheitCelsius"
 
 // TemperatureUnitValues returns a list of the values for TemperatureUnit
 func TemperatureUnitValues() []TemperatureUnit {
 	return []TemperatureUnit{
 		Kelvin,
-		Farenheit,
+		Fahrenheit,
 		Celsius,
 	}
 }
 
 var _TemperatureUnitMap = map[TemperatureUnit]string{
-	Kelvin:    _TemperatureUnitName[0:6],
-	Farenheit: _TemperatureUnitName[6:15],
-	Celsius:   _TemperatureUnitName[15:22],
+	Kelvin:     _TemperatureUnitName[0:6],
+	Fahrenheit: _TemperatureUnitName[6:16],
+	Celsius:    _TemperatureUnitName[16:23],
 }
 
 // String implements the Stringer interface.
@@ -56,8 +56,8 @@ func (x TemperatureUnit) IsValid() bool {
 
 var _TemperatureUnitValue = map[string]TemperatureUnit{
 	_TemperatureUnitName[0:6]:   Kelvin,
-	_TemperatureUnitName[6:15]:  Farenheit,
-	_TemperatureUnitName[15:22]: Celsius,
+	_TemperatureUnitName[6:16]:  Fahrenheit,
+	_TemperatureUnitName[16:23]: Celsius,
 }
 
 // ParseTemperatureUnit attempts to convert a string to a TemperatureUnit.

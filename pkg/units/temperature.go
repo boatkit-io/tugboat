@@ -6,7 +6,7 @@ import (
 )
 
 // TemperatureUnit is an enum for all temperature unit types
-// ENUM(Kelvin, Farenheit, Celsius)
+// ENUM(Kelvin, Fahrenheit, Celsius)
 //
 //go:generate go run github.com/abice/go-enum@latest --noprefix --values
 type TemperatureUnit int
@@ -46,7 +46,7 @@ func (p Temperature) Convert(newUnit TemperatureUnit) Temperature {
 	switch p.Unit {
 	case Kelvin:
 		inKelvin = p.Value
-	case Farenheit:
+	case Fahrenheit:
 		inKelvin = (p.Value + 459.67) * (5.0 / 9.0)
 	case Celsius:
 		inKelvin = p.Value + 273.15
@@ -56,7 +56,7 @@ func (p Temperature) Convert(newUnit TemperatureUnit) Temperature {
 	switch newUnit {
 	case Kelvin:
 		return NewTemperature(newUnit, inKelvin)
-	case Farenheit:
+	case Fahrenheit:
 		return NewTemperature(newUnit, inKelvin*(9.0/5.0)-459.67)
 	case Celsius:
 		return NewTemperature(newUnit, inKelvin-273.15)
