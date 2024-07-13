@@ -6,17 +6,10 @@ import (
 )
 
 // TemperatureUnit is an enum for all temperature unit types
+// ENUM(Kelvin, Farenheit, Celsius)
+//
+//go:generate go run github.com/abice/go-enum@latest --marshal --noprefix --values
 type TemperatureUnit int
-
-// The different TemperatureUnits
-const (
-	// Kelvin is Kelvin
-	Kelvin TemperatureUnit = iota
-	// Farenheit is Farenheit
-	Farenheit TemperatureUnit = iota
-	// Celsius is Celsius
-	Celsius TemperatureUnit = iota
-)
 
 // Temperature is a generic Unit structure that represents temperatures
 type Temperature Unit[TemperatureUnit]

@@ -3,21 +3,15 @@ package units
 import "encoding/json"
 
 // DistanceUnit is an enum for all distance unit types
+// ENUM(Meter, Foot, Mile, NauticalMile, Fathom)
+// Meter is a meter
+// Foot is a foot
+// Mile is a mile
+// NauticalMile is a nautical mile
+// Fathom is a fathom
+//
+//go:generate go run github.com/abice/go-enum@latest --marshal --noprefix --values
 type DistanceUnit int
-
-// DistanceUnits
-const (
-	// Meter is a meter
-	Meter DistanceUnit = 0
-	// Foot is a foot
-	Foot DistanceUnit = 1
-	// Mile is a mile
-	Mile DistanceUnit = 2
-	// NauticalMile is a nautical mile
-	NauticalMile DistanceUnit = 3
-	// Fathom is a fathom
-	Fathom DistanceUnit = 4
-)
 
 // distanceConversions is a helper for doing unit conversions on distance units
 var distanceConversions = map[DistanceUnit]float32{

@@ -3,17 +3,13 @@ package units
 import "encoding/json"
 
 // PressureUnit is an enum for all pressure unit types
+// ENUM(Psi, Hpa, Pa)
+// Psi is PSI (pounds per square inch)
+// Hpa is HectoPascals (100 Pascals)
+// Pa is Pascals
+//
+//go:generate go run github.com/abice/go-enum@latest --marshal --noprefix --values
 type PressureUnit int
-
-// The different PressureUnits
-const (
-	// Psi is PSI (pounds per square inch)
-	Psi PressureUnit = 0
-	// Hpa is HectoPascals (100 Pascals)
-	Hpa PressureUnit = 1
-	// Pa is Pascals
-	Pa PressureUnit = 2
-)
 
 // pressureConversions is a helper for doing unit conversions on PressureUnits
 var pressureConversions = map[PressureUnit]float32{

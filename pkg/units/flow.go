@@ -3,17 +3,13 @@ package units
 import "encoding/json"
 
 // FlowUnit is an enum for all flow unit types
+// ENUM(LitersPerHour, GallonsPerMinute, GallonsPerHour)
+// LitersPerHour is L/hr
+// GallonsPerMinute is Gal/min
+// GallonsPerHour is Gal/hr
+//
+//go:generate go run github.com/abice/go-enum@latest --marshal --noprefix --values
 type FlowUnit int
-
-// The FlowUnits
-const (
-	// LitersPerHour is L/hr
-	LitersPerHour FlowUnit = iota
-	// GallonsPerMinute is Gal/min
-	GallonsPerMinute
-	// GallonsPerHour is Gal/hr
-	GallonsPerHour
-)
 
 // flowConversions is a helper for doing unit conversions on FlowUnits
 var flowConversions = map[FlowUnit]float32{
