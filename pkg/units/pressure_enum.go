@@ -67,19 +67,3 @@ func ParsePressureUnit(name string) (PressureUnit, error) {
 	}
 	return PressureUnit(0), fmt.Errorf("%s is %w", name, ErrInvalidPressureUnit)
 }
-
-// MarshalText implements the text marshaller method.
-func (x PressureUnit) MarshalText() ([]byte, error) {
-	return []byte(x.String()), nil
-}
-
-// UnmarshalText implements the text unmarshaller method.
-func (x *PressureUnit) UnmarshalText(text []byte) error {
-	name := string(text)
-	tmp, err := ParsePressureUnit(name)
-	if err != nil {
-		return err
-	}
-	*x = tmp
-	return nil
-}

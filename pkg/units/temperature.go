@@ -8,7 +8,7 @@ import (
 // TemperatureUnit is an enum for all temperature unit types
 // ENUM(Kelvin, Farenheit, Celsius)
 //
-//go:generate go run github.com/abice/go-enum@latest --marshal --noprefix --values
+//go:generate go run github.com/abice/go-enum@latest --noprefix --values
 type TemperatureUnit int
 
 // Temperature is a generic Unit structure that represents temperatures

@@ -10,7 +10,7 @@ import "encoding/json"
 // NauticalMile is a nautical mile
 // Fathom is a fathom
 //
-//go:generate go run github.com/abice/go-enum@latest --marshal --noprefix --values
+//go:generate go run github.com/abice/go-enum@latest --noprefix --values
 type DistanceUnit int
 
 // distanceConversions is a helper for doing unit conversions on distance units

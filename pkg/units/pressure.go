@@ -8,7 +8,7 @@ import "encoding/json"
 // Hpa is HectoPascals (100 Pascals)
 // Pa is Pascals
 //
-//go:generate go run github.com/abice/go-enum@latest --marshal --noprefix --values
+//go:generate go run github.com/abice/go-enum@latest --noprefix --values
 type PressureUnit int
 
 // pressureConversions is a helper for doing unit conversions on PressureUnits

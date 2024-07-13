@@ -67,19 +67,3 @@ func ParseFlowUnit(name string) (FlowUnit, error) {
 	}
 	return FlowUnit(0), fmt.Errorf("%s is %w", name, ErrInvalidFlowUnit)
 }
-
-// MarshalText implements the text marshaller method.
-func (x FlowUnit) MarshalText() ([]byte, error) {
-	return []byte(x.String()), nil
-}
-
-// UnmarshalText implements the text unmarshaller method.
-func (x *FlowUnit) UnmarshalText(text []byte) error {
-	name := string(text)
-	tmp, err := ParseFlowUnit(name)
-	if err != nil {
-		return err
-	}
-	*x = tmp
-	return nil
-}

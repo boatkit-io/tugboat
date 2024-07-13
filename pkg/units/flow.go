@@ -8,7 +8,7 @@ import "encoding/json"
 // GallonsPerMinute is Gal/min
 // GallonsPerHour is Gal/hr
 //
-//go:generate go run github.com/abice/go-enum@latest --marshal --noprefix --values
+//go:generate go run github.com/abice/go-enum@latest --noprefix --values
 type FlowUnit int
 
 // flowConversions is a helper for doing unit conversions on FlowUnits

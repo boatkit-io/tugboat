@@ -72,19 +72,3 @@ func ParseVelocityUnit(name string) (VelocityUnit, error) {
 	}
 	return VelocityUnit(0), fmt.Errorf("%s is %w", name, ErrInvalidVelocityUnit)
 }
-
-// MarshalText implements the text marshaller method.
-func (x VelocityUnit) MarshalText() ([]byte, error) {
-	return []byte(x.String()), nil
-}
-
-// UnmarshalText implements the text unmarshaller method.
-func (x *VelocityUnit) UnmarshalText(text []byte) error {
-	name := string(text)
-	tmp, err := ParseVelocityUnit(name)
-	if err != nil {
-		return err
-	}
-	*x = tmp
-	return nil
-}

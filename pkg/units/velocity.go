@@ -5,7 +5,7 @@ import "encoding/json"
 // VelocityUnit is an enum for all velocity unit types
 // ENUM(MetersPerSecond, Knots, Mph, Kph)
 //
-//go:generate go run github.com/abice/go-enum@latest --marshal --noprefix --values
+//go:generate go run github.com/abice/go-enum@latest --noprefix --values
 type VelocityUnit int
 
 // velocityConversions is a helper for doing unit conversions on VelocityUnits
