@@ -3,6 +3,12 @@
 // units transferred from boatweb.
 package units
 
+// UnitType is an enum for all unit types
+// ENUM(Distance,Flow,Pressure,Temperature,Velocity,Volume)
+//
+//go:generate go run github.com/abice/go-enum@latest --values
+type UnitType int
+
 // Unit is a base type for all other unit structs
 type Unit[T ~int] struct {
 	Value float32

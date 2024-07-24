@@ -22,13 +22,13 @@ type Velocity Unit[VelocityUnit]
 // MarshalJSON is a custom marshaler for the unit type to add the UnitType string
 func (u Velocity) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
-		Value    float32 `json:"value"`
-		Unit     int     `json:"unit"`
-		UnitType string  `json:"unitType"`
+		Value    float32  `json:"value"`
+		Unit     int      `json:"unit"`
+		UnitType UnitType `json:"unitType"`
 	}{
 		Value:    u.Value,
 		Unit:     int(u.Unit),
-		UnitType: "spd",
+		UnitType: UnitTypeVelocity,
 	})
 }
 
