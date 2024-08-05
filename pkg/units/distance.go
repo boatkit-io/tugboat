@@ -63,3 +63,8 @@ func (p Distance) Sub(o Distance) Distance {
 	v2, u2 := subTableUnits(distanceConversions, p.Value, p.Unit, o.Value, o.Unit)
 	return NewDistance(u2, v2)
 }
+
+// Multiply will multiply this unit's value by an amount, returning a new unit with the multiplied value
+func (p Distance) Multiply(by float32) Distance {
+	return NewDistance(p.Unit, p.Value*by)
+}
