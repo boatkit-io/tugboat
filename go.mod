@@ -2,7 +2,7 @@ module github.com/boatkit-io/tugboat
 
 go 1.22
 
-toolchain go1.22.4
+toolchain go1.23.2
 
 require (
 	github.com/brutella/can v0.0.2
