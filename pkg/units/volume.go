@@ -3,7 +3,7 @@ package units
 import "encoding/json"
 
 // VolumeUnit is an enum for all volume unit types
-// ENUM(MetersCubed, Liter, Gallon)
+// ENUM(Liter, MetersCubed, Gallon)
 //
 //go:generate go run github.com/abice/go-enum@latest --noprefix --values
 type VolumeUnit int
@@ -55,4 +55,8 @@ func (p Volume) Add(o Volume) Volume {
 func (p Volume) Sub(o Volume) Volume {
 	v2, u2 := subTableUnits(volumeConversions, p.Value, p.Unit, o.Value, o.Unit)
 	return NewVolume(u2, v2)
+}
+
+func (p Volume) GetValue() *float32 {
+	return &p.Value
 }

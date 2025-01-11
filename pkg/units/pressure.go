@@ -3,7 +3,7 @@ package units
 import "encoding/json"
 
 // PressureUnit is an enum for all pressure unit types
-// ENUM(Psi, Hpa, Pa)
+// ENUM(Pa, Psi, Hpa)
 // Psi is PSI (pounds per square inch)
 // Hpa is HectoPascals (100 Pascals)
 // Pa is Pascals
@@ -58,4 +58,8 @@ func (p Pressure) Add(o Pressure) Pressure {
 func (p Pressure) Sub(o Pressure) Pressure {
 	v2, u2 := subTableUnits(pressureConversions, p.Value, p.Unit, o.Value, o.Unit)
 	return NewPressure(u2, v2)
+}
+
+func (p Pressure) GetValue() *float32 {
+	return &p.Value
 }

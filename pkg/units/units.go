@@ -14,3 +14,8 @@ type Unit[T ~int] struct {
 	Value float32
 	Unit  T
 }
+
+type Units interface {
+	MarshalJSON() ([]byte, error)
+	GetValue() *float32
+}

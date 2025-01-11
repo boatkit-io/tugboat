@@ -12,30 +12,30 @@ import (
 )
 
 const (
-	// MetersCubed is a VolumeUnit of type MetersCubed.
-	MetersCubed VolumeUnit = iota
 	// Liter is a VolumeUnit of type Liter.
-	Liter
+	Liter VolumeUnit = iota
+	// MetersCubed is a VolumeUnit of type MetersCubed.
+	MetersCubed
 	// Gallon is a VolumeUnit of type Gallon.
 	Gallon
 )
 
 var ErrInvalidVolumeUnit = errors.New("not a valid VolumeUnit")
 
-const _VolumeUnitName = "MetersCubedLiterGallon"
+const _VolumeUnitName = "LiterMetersCubedGallon"
 
 // VolumeUnitValues returns a list of the values for VolumeUnit
 func VolumeUnitValues() []VolumeUnit {
 	return []VolumeUnit{
-		MetersCubed,
 		Liter,
+		MetersCubed,
 		Gallon,
 	}
 }
 
 var _VolumeUnitMap = map[VolumeUnit]string{
-	MetersCubed: _VolumeUnitName[0:11],
-	Liter:       _VolumeUnitName[11:16],
+	Liter:       _VolumeUnitName[0:5],
+	MetersCubed: _VolumeUnitName[5:16],
 	Gallon:      _VolumeUnitName[16:22],
 }
 
@@ -55,8 +55,8 @@ func (x VolumeUnit) IsValid() bool {
 }
 
 var _VolumeUnitValue = map[string]VolumeUnit{
-	_VolumeUnitName[0:11]:  MetersCubed,
-	_VolumeUnitName[11:16]: Liter,
+	_VolumeUnitName[0:5]:   Liter,
+	_VolumeUnitName[5:16]:  MetersCubed,
 	_VolumeUnitName[16:22]: Gallon,
 }
 
