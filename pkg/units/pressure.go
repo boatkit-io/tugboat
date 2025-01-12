@@ -60,6 +60,7 @@ func (p Pressure) Sub(o Pressure) Pressure {
 	return NewPressure(u2, v2)
 }
 
+// GetValue returns the value of the unit
 func (p Pressure) GetValue() *float32 {
 	return &p.Value
 }

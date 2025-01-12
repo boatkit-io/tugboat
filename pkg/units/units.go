@@ -15,6 +15,7 @@ type Unit[T ~int] struct {
 	Unit  T
 }
 
+// Units is a base interface for all unit structs
 type Units interface {
 	MarshalJSON() ([]byte, error)
 	GetValue() *float32

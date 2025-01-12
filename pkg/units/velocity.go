@@ -64,6 +64,7 @@ func (v Velocity) TimesTime(seconds float32) Distance {
 	return NewDistance(NauticalMile, vKt.Value*(seconds/3600.0))
 }
 
+// GetValue returns the value of the unit
 func (p Velocity) GetValue() *float32 {
 	return &p.Value
 }

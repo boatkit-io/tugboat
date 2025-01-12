@@ -57,6 +57,7 @@ func (p Volume) Sub(o Volume) Volume {
 	return NewVolume(u2, v2)
 }
 
+// GetValue returns the value of the unit
 func (p Volume) GetValue() *float32 {
 	return &p.Value
 }

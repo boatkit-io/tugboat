@@ -60,6 +60,7 @@ func (p Flow) Sub(o Flow) Flow {
 	return NewFlow(u2, v2)
 }
 
+// GetValue returns the value of the unit
 func (p Flow) GetValue() *float32 {
 	return &p.Value
 }

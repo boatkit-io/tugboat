@@ -65,6 +65,7 @@ func (p Temperature) Convert(newUnit TemperatureUnit) Temperature {
 	}
 }
 
+// GetValue returns the value of the unit
 func (p Temperature) GetValue() *float32 {
 	return &p.Value
 }
