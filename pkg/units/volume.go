@@ -56,8 +56,3 @@ func (p Volume) Sub(o Volume) Volume {
 	v2, u2 := subTableUnits(volumeConversions, p.Value, p.Unit, o.Value, o.Unit)
 	return NewVolume(u2, v2)
 }
-
-// GetValue returns the value of the unit
-func (p Volume) GetValue() *float32 {
-	return &p.Value
-}

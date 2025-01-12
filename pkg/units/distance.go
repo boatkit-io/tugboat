@@ -68,8 +68,3 @@ func (p Distance) Sub(o Distance) Distance {
 func (p Distance) Multiply(by float32) Distance {
 	return NewDistance(p.Unit, p.Value*by)
 }
-
-// GetValue returns the value of the unit
-func (p Distance) GetValue() *float32 {
-	return &p.Value
-}

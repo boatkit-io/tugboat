@@ -59,8 +59,3 @@ func (p Flow) Sub(o Flow) Flow {
 	v2, u2 := subTableUnits(flowConversions, p.Value, p.Unit, o.Value, o.Unit)
 	return NewFlow(u2, v2)
 }
-
-// GetValue returns the value of the unit
-func (p Flow) GetValue() *float32 {
-	return &p.Value
-}

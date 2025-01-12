@@ -59,8 +59,3 @@ func (p Pressure) Sub(o Pressure) Pressure {
 	v2, u2 := subTableUnits(pressureConversions, p.Value, p.Unit, o.Value, o.Unit)
 	return NewPressure(u2, v2)
 }
-
-// GetValue returns the value of the unit
-func (p Pressure) GetValue() *float32 {
-	return &p.Value
-}

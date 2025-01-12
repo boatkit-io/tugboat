@@ -64,8 +64,3 @@ func (p Temperature) Convert(newUnit TemperatureUnit) Temperature {
 		panic(fmt.Sprintf("Unknown new temperature unit %+v", newUnit))
 	}
 }
-
-// GetValue returns the value of the unit
-func (p Temperature) GetValue() *float32 {
-	return &p.Value
-}
