@@ -3,7 +3,7 @@ package units
 import "encoding/json"
 
 // PressureUnit is an enum for all pressure unit types
-// ENUM(Psi, Hpa, Pa)
+// ENUM(Pa, Psi, Hpa)
 // Psi is PSI (pounds per square inch)
 // Hpa is HectoPascals (100 Pascals)
 // Pa is Pascals

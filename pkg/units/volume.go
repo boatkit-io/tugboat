@@ -3,7 +3,7 @@ package units
 import "encoding/json"
 
 // VolumeUnit is an enum for all volume unit types
-// ENUM(MetersCubed, Liter, Gallon)
+// ENUM(Liter, MetersCubed, Gallon)
 //
 //go:generate go run github.com/abice/go-enum@latest --noprefix --values
 type VolumeUnit int

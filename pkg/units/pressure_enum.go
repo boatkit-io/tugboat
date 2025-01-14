@@ -12,31 +12,31 @@ import (
 )
 
 const (
+	// Pa is a PressureUnit of type Pa.
+	Pa PressureUnit = iota
 	// Psi is a PressureUnit of type Psi.
-	Psi PressureUnit = iota
+	Psi
 	// Hpa is a PressureUnit of type Hpa.
 	Hpa
-	// Pa is a PressureUnit of type Pa.
-	Pa
 )
 
 var ErrInvalidPressureUnit = errors.New("not a valid PressureUnit")
 
-const _PressureUnitName = "PsiHpaPa"
+const _PressureUnitName = "PaPsiHpa"
 
 // PressureUnitValues returns a list of the values for PressureUnit
 func PressureUnitValues() []PressureUnit {
 	return []PressureUnit{
+		Pa,
 		Psi,
 		Hpa,
-		Pa,
 	}
 }
 
 var _PressureUnitMap = map[PressureUnit]string{
-	Psi: _PressureUnitName[0:3],
-	Hpa: _PressureUnitName[3:6],
-	Pa:  _PressureUnitName[6:8],
+	Pa:  _PressureUnitName[0:2],
+	Psi: _PressureUnitName[2:5],
+	Hpa: _PressureUnitName[5:8],
 }
 
 // String implements the Stringer interface.
@@ -55,9 +55,9 @@ func (x PressureUnit) IsValid() bool {
 }
 
 var _PressureUnitValue = map[string]PressureUnit{
-	_PressureUnitName[0:3]: Psi,
-	_PressureUnitName[3:6]: Hpa,
-	_PressureUnitName[6:8]: Pa,
+	_PressureUnitName[0:2]: Pa,
+	_PressureUnitName[2:5]: Psi,
+	_PressureUnitName[5:8]: Hpa,
 }
 
 // ParsePressureUnit attempts to convert a string to a PressureUnit.
