@@ -11,7 +11,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20221214185949-378a404a26f0
-	go.bug.st/serial v1.6.2
+	go.bug.st/serial v1.6.4
 )
 
 require (
