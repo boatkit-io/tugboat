@@ -34,7 +34,7 @@ jobs:
         uses: jdx/mise-action@v2
         env:
           GH_TOKEN: ${{ github.token }}
-      - uses: paambaati/codeclimate-action@v8.0.0
+      - uses: paambaati/codeclimate-action@v9.0.0
         env:
           CC_TEST_REPORTER_ID: ${{ secrets.CODE_CLIMATE_TOKEN }}
         with:
