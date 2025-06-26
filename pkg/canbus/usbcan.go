@@ -201,11 +201,16 @@ func (c *USBCANChannel) Close() error {
 func (c *USBCANChannel) WriteFrame(frame can.Frame) error {
 	buf := []byte{
 		0xaa,
-		0xC0 | 0x20 /* always extended frame for now */ | frame.Length,
+		0xC0 | frame.Length,
 		byte(frame.ID),
 		byte(frame.ID >> 8),
-		byte(frame.ID >> 16),
-		byte(frame.ID >> 24),
+	}
+	// Not sure if this is the right way to do it, but for now give it a shot
+	// (we're only sending standard frames over calex, so need to test this on n2k someday if we care...)
+	if frame.ID > 0xffff {
+		// switch to extended frame
+		buf[1] |= 0x20
+		buf = append(buf, byte(frame.ID>>16), byte(frame.ID>>24))
 	}
 	buf = append(buf, frame.Data[0:frame.Length]...)
 	buf = append(buf, 0x55)
