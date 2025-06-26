@@ -5,7 +5,7 @@ test:
 .PHONY: lint
 lint:
 	@golangci-lint run
-	@go run github.com/getoutreach/lintroller/cmd/lintroller@v1.18.2 -config lintroller.yaml ./...
+	@go run github.com/getoutreach/lintroller/cmd/lintroller@v1.18.8 -config lintroller.yaml ./...
 
 .PHONY: generate
 generate:

@@ -23,7 +23,7 @@ jobs:
         with:
           args: --timeout=5m
       - name: lintroller
-        run: go run github.com/getoutreach/lintroller/cmd/lintroller@v1.18.2 -config lintroller.yaml ./...
+        run: go run github.com/getoutreach/lintroller/cmd/lintroller@v1.18.8 -config lintroller.yaml ./...
 
   test:
     name: go test
