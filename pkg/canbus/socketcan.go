@@ -52,56 +52,75 @@ func (c *SocketCANChannel) Run(ctx context.Context) error {
 		return fmt.Errorf("no link found for %v: %v", c.options.InterfaceName, err)
 	}
 
-	if link.Type() != "can" {
+	if link.Type() != "can" && link.Type() != "vcan" {
 		return fmt.Errorf("invalid linktype %q", link.Type())
 	}
 
-	canLink := link.(*netlink.Can)
-
-	if canLink.Attrs().OperState == netlink.OperUp {
-		bounce := false
-		if canLink.BitRate != uint32(c.options.BitRate) {
-			c.log.WithField("bitRate", canLink.BitRate).Info("Channel currently has wrong bitrate, bringing down")
-			bounce = true
-		} else if c.options.ForceBounceInterface {
-			c.log.Info("Bouncing channel")
-			bounce = true
-		}
-
-		if bounce {
-			cmd := exec.CommandContext(ctx, "ip", "link", "set", c.options.InterfaceName, "down")
+	// Handle vcan interfaces differently since they are GenericLink, not Can
+	if link.Type() == "vcan" {
+		// For vcan interfaces, we don't need to check bitrate or bounce the interface
+		// Just make sure it's up
+		if link.Attrs().OperState == netlink.OperDown {
+			c.log.WithField("canName", c.options.InterfaceName).Info("vcan link is down, bringing up link")
+			cmd := exec.CommandContext(ctx, "ip", "link", "set", c.options.InterfaceName, "up")
 			if output, err := cmd.Output(); err != nil {
 				logBase := c.log.WithField("cmd", strings.Join(cmd.Args, " ")).WithField("output", string(output))
 				if errCast, worked := err.(*exec.ExitError); worked {
 					logBase = logBase.WithField("stderr", string(errCast.Stderr))
 				}
-				logBase.Error("Ip link set down failed")
+				logBase.Error("Ip link set up failed")
 				return err
 			}
-
-			// Re-fetch info
-			link, err = netlink.LinkByName(c.options.InterfaceName)
-			if err != nil {
-				return fmt.Errorf("no link found for %v: %v", c.options.InterfaceName, err)
-			}
-
-			canLink = link.(*netlink.Can)
 		}
-	}
+	} else {
+		// Handle real CAN interfaces
+		canLink := link.(*netlink.Can)
 
-	if canLink.Attrs().OperState == netlink.OperDown {
-		c.log.WithField("canName", c.options.InterfaceName).WithField("bitRate", c.options.BitRate).Info("Link is down, bringing up link")
-
-		// ip link set can1 up type can bitrate 250000
-		cmd := exec.CommandContext(ctx, "ip", "link", "set", c.options.InterfaceName, "up", "type", "can", "bitrate",
-			strconv.Itoa(int(c.options.BitRate)))
-		if output, err := cmd.Output(); err != nil {
-			logBase := c.log.WithField("cmd", strings.Join(cmd.Args, " ")).WithField("output", string(output))
-			if errCast, worked := err.(*exec.ExitError); worked {
-				logBase = logBase.WithField("stderr", string(errCast.Stderr))
+		if canLink.Attrs().OperState == netlink.OperUp {
+			bounce := false
+			if canLink.BitRate != uint32(c.options.BitRate) {
+				c.log.WithField("bitRate", canLink.BitRate).Info("Channel currently has wrong bitrate, bringing down")
+				bounce = true
+			} else if c.options.ForceBounceInterface {
+				c.log.Info("Bouncing channel")
+				bounce = true
 			}
-			logBase.Error("Ip link set up failed")
-			return err
+
+			if bounce {
+				cmd := exec.CommandContext(ctx, "ip", "link", "set", c.options.InterfaceName, "down")
+				if output, err := cmd.Output(); err != nil {
+					logBase := c.log.WithField("cmd", strings.Join(cmd.Args, " ")).WithField("output", string(output))
+					if errCast, worked := err.(*exec.ExitError); worked {
+						logBase = logBase.WithField("stderr", string(errCast.Stderr))
+					}
+					logBase.Error("Ip link set down failed")
+					return err
+				}
+
+				// Re-fetch info
+				link, err = netlink.LinkByName(c.options.InterfaceName)
+				if err != nil {
+					return fmt.Errorf("no link found for %v: %v", c.options.InterfaceName, err)
+				}
+
+				canLink = link.(*netlink.Can)
+			}
+		}
+
+		if canLink.Attrs().OperState == netlink.OperDown {
+			c.log.WithField("canName", c.options.InterfaceName).WithField("bitRate", c.options.BitRate).Info("Link is down, bringing up link")
+
+			// ip link set can1 up type can bitrate 250000
+			cmd := exec.CommandContext(ctx, "ip", "link", "set", c.options.InterfaceName, "up", "type", "can", "bitrate",
+				strconv.Itoa(int(c.options.BitRate)))
+			if output, err := cmd.Output(); err != nil {
+				logBase := c.log.WithField("cmd", strings.Join(cmd.Args, " ")).WithField("output", string(output))
+				if errCast, worked := err.(*exec.ExitError); worked {
+					logBase = logBase.WithField("stderr", string(errCast.Stderr))
+				}
+				logBase.Error("Ip link set up failed")
+				return err
+			}
 		}
 	}
 
@@ -115,8 +134,7 @@ func (c *SocketCANChannel) Run(ctx context.Context) error {
 	c.busHandler = can.NewHandler(c.options.MessageHandler)
 	c.bus.Subscribe(c.busHandler)
 
-	c.log.WithField("interfaceName", c.options.InterfaceName).
-		Info("Opened SocketCAN and listening")
+	c.log.WithField("interfaceName", c.options.InterfaceName).Debug("Opened SocketCAN and listening")
 
 	// Start listening for messages
 	return bus.ConnectAndPublish()
@@ -138,5 +156,11 @@ func (c *SocketCANChannel) Close() error {
 
 // WriteFrame will send a CAN frame to the channel
 func (c *SocketCANChannel) WriteFrame(frame can.Frame) error {
-	return c.bus.Publish(frame)
+	c.log.WithField("frame", frame).Debug("Writing frame")
+	err := c.bus.Publish(frame)
+	if err != nil {
+		c.log.WithField("frame", frame).WithError(err).Debug("Error writing frame")
+		return err
+	}
+	return nil
 }
