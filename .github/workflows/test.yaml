@@ -34,10 +34,5 @@ jobs:
         uses: jdx/mise-action@v2
         env:
           GH_TOKEN: ${{ github.token }}
-      - uses: paambaati/codeclimate-action@v9.0.0
-        env:
-          CC_TEST_REPORTER_ID: ${{ secrets.CODE_CLIMATE_TOKEN }}
-        with:
-          coverageCommand: make test
-          coverageLocations: c.out:gocov
-          prefix: github.com/boatkit-io/tugboat
+      - name: Test
+        run: make test
