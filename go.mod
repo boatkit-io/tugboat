@@ -1,15 +1,15 @@
 module github.com/boatkit-io/tugboat
 
-go 1.24.4
+go 1.26.3
 
 require (
 	github.com/brutella/can v0.0.2
 	github.com/google/uuid v1.6.0
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.9.3
+	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.10.0
 	github.com/vishvananda/netlink v1.3.1
-	go.bug.st/serial v1.6.4
+	go.bug.st/serial v1.7.1
 )
 
 require (
@@ -21,5 +21,5 @@ require (
 
 require (
 	github.com/creack/goselect v0.1.3 // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 )
