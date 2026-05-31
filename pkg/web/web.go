@@ -55,7 +55,6 @@ func RespondError(log *logrus.Logger, w http.ResponseWriter, r *http.Request, co
 	}).Error("error while serving request")
 
 	if code >= http.StatusInternalServerError && code != http.StatusServiceUnavailable && code != http.StatusNotImplemented {
-
 		// Respond with generic error. Error messages and and codes may potentially contain
 		// sensitive information or help an attacker.
 		code = http.StatusInternalServerError

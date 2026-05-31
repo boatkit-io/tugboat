@@ -13,26 +13,18 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Tool Versions
-        uses: jdx/mise-action@v2
-        env:
-          GH_TOKEN: ${{ github.token }}
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v8
-        with:
-          args: --timeout=5m
-      - name: lintroller
-        run: go run github.com/getoutreach/lintroller/cmd/lintroller@v1.18.8 -config lintroller.yaml ./...
+      - uses: actions/checkout@v6
+      - name: Set up mise
+        uses: jdx/mise-action@v4
+      - name: Lint
+        run: mise run lint
 
   test:
-    name: go test
+    name: gotestsum
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Tool Versions
-        uses: jdx/mise-action@v2
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - uses: actions/checkout@v6
+      - name: Set up mise
+        uses: jdx/mise-action@v4
       - name: Test
-        run: make test
+        run: mise run test

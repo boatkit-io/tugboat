@@ -43,19 +43,19 @@ func NewFlow(u FlowUnit, value float32) Flow {
 }
 
 // Convert converts the unit+value into a new unit type, returning a new unit value of the requested type.
-func (p Flow) Convert(newUnit FlowUnit) Flow {
-	v2 := convertTableUnit(flowConversions, p.Value, p.Unit, newUnit)
+func (u Flow) Convert(newUnit FlowUnit) Flow {
+	v2 := convertTableUnit(flowConversions, u.Value, u.Unit, newUnit)
 	return NewFlow(newUnit, v2)
 }
 
 // Add will add another unit to this one, returning a new unit with the added values
-func (p Flow) Add(o Flow) Flow {
-	v2, u2 := addTableUnits(flowConversions, p.Value, p.Unit, o.Value, o.Unit)
+func (u Flow) Add(o Flow) Flow {
+	v2, u2 := addTableUnits(flowConversions, u.Value, u.Unit, o.Value, o.Unit)
 	return NewFlow(u2, v2)
 }
 
 // Sub will subtract another unit from this one, returning a new unit with the subtracted values
-func (p Flow) Sub(o Flow) Flow {
-	v2, u2 := subTableUnits(flowConversions, p.Value, p.Unit, o.Value, o.Unit)
+func (u Flow) Sub(o Flow) Flow {
+	v2, u2 := subTableUnits(flowConversions, u.Value, u.Unit, o.Value, o.Unit)
 	return NewFlow(u2, v2)
 }

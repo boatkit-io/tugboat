@@ -5,17 +5,17 @@ A common set of Go packages for boatkit projects.
 ## Tests
 
 ```
-make test
+mise run test
 ```
 
 ## Lint
 
 ```
-make lint
+mise run lint
 ```
 
 ## Rerun go-generate
 
 ```
-make generate
+mise run generate
 ```

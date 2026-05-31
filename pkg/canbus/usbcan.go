@@ -61,7 +61,7 @@ func NewUSBCANChannel(log *logrus.Logger, options USBCANChannelOptions) Interfac
 }
 
 // Run opens the serial interface and starts listening.
-func (c *USBCANChannel) Run(ctx context.Context) error {
+func (c *USBCANChannel) Run(_ context.Context) error {
 	mode := &serial.Mode{
 		BaudRate: c.options.SerialBaudRate,
 	}
@@ -109,9 +109,8 @@ func (c *USBCANChannel) parseFrames(bufAddr *[]byte) error {
 				c.log.Debugf("Error frame: %+v\n", buf)
 				*bufAddr = []byte{}
 				return nil
-			} else {
-				c.log.Debugf("Error frame, skipping %d bytes: %+v\n", idx, buf)
 			}
+			c.log.Debugf("Error frame, skipping %d bytes: %+v\n", idx, buf)
 
 			*bufAddr = buf[idx:]
 			continue
@@ -301,9 +300,9 @@ func mapBitRate(bitRate int) (byte, error) {
 }
 
 // calcChecksum is a crappy function that calcs checksum the way they do
-func calcChecksum(buf []byte, start, len int) byte {
+func calcChecksum(buf []byte, start, length int) byte {
 	cs := byte(0)
-	for i := start; i < start+len; i++ {
+	for i := start; i < start+length; i++ {
 		cs += buf[i]
 	}
 	return cs

@@ -47,24 +47,24 @@ func NewDistance(u DistanceUnit, value float32) Distance {
 }
 
 // Convert converts the unit+value into a new unit type, returning a new unit value of the requested type.
-func (p Distance) Convert(newUnit DistanceUnit) Distance {
-	v2 := convertTableUnit(distanceConversions, p.Value, p.Unit, newUnit)
+func (u Distance) Convert(newUnit DistanceUnit) Distance {
+	v2 := convertTableUnit(distanceConversions, u.Value, u.Unit, newUnit)
 	return NewDistance(newUnit, v2)
 }
 
 // Add will add another unit to this one, returning a new unit with the added values
-func (p Distance) Add(o Distance) Distance {
-	v2, u2 := addTableUnits(distanceConversions, p.Value, p.Unit, o.Value, o.Unit)
+func (u Distance) Add(o Distance) Distance {
+	v2, u2 := addTableUnits(distanceConversions, u.Value, u.Unit, o.Value, o.Unit)
 	return NewDistance(u2, v2)
 }
 
 // Sub will subtract another unit from this one, returning a new unit with the subtracted values
-func (p Distance) Sub(o Distance) Distance {
-	v2, u2 := subTableUnits(distanceConversions, p.Value, p.Unit, o.Value, o.Unit)
+func (u Distance) Sub(o Distance) Distance {
+	v2, u2 := subTableUnits(distanceConversions, u.Value, u.Unit, o.Value, o.Unit)
 	return NewDistance(u2, v2)
 }
 
 // Multiply will multiply this unit's value by an amount, returning a new unit with the multiplied value
-func (p Distance) Multiply(by float32) Distance {
-	return NewDistance(p.Unit, p.Value*by)
+func (u Distance) Multiply(by float32) Distance {
+	return NewDistance(u.Unit, u.Value*by)
 }

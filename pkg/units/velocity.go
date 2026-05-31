@@ -41,25 +41,25 @@ func NewVelocity(u VelocityUnit, value float32) Velocity {
 }
 
 // Convert converts the unit+value into a new unit type, returning a new unit value of the requested type.
-func (p Velocity) Convert(newUnit VelocityUnit) Velocity {
-	v2 := convertTableUnit(velocityConversions, p.Value, p.Unit, newUnit)
+func (u Velocity) Convert(newUnit VelocityUnit) Velocity {
+	v2 := convertTableUnit(velocityConversions, u.Value, u.Unit, newUnit)
 	return NewVelocity(newUnit, v2)
 }
 
 // Add will add another unit to this one, returning a new unit with the added values
-func (p Velocity) Add(o Velocity) Velocity {
-	v2, u2 := addTableUnits(velocityConversions, p.Value, p.Unit, o.Value, o.Unit)
+func (u Velocity) Add(o Velocity) Velocity {
+	v2, u2 := addTableUnits(velocityConversions, u.Value, u.Unit, o.Value, o.Unit)
 	return NewVelocity(u2, v2)
 }
 
 // Sub will subtract another unit from this one, returning a new unit with the subtracted values
-func (p Velocity) Sub(o Velocity) Velocity {
-	v2, u2 := subTableUnits(velocityConversions, p.Value, p.Unit, o.Value, o.Unit)
+func (u Velocity) Sub(o Velocity) Velocity {
+	v2, u2 := subTableUnits(velocityConversions, u.Value, u.Unit, o.Value, o.Unit)
 	return NewVelocity(u2, v2)
 }
 
 // TimesTime calculates a distance from this Velocity unit by multiplying it by an amount of time
-func (v Velocity) TimesTime(seconds float32) Distance {
-	vKt := v.Convert(Knots)
+func (u Velocity) TimesTime(seconds float32) Distance {
+	vKt := u.Convert(Knots)
 	return NewDistance(NauticalMile, vKt.Value*(seconds/3600.0))
 }

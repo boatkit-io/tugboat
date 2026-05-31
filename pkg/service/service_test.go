@@ -163,7 +163,7 @@ func TestServiceRun(t *testing.T) {
 			return errors.New("error")
 		})
 
-		longLived := NewActivity("longLived", func(ctx context.Context) error {
+		longLived := NewActivity("longLived", func(_ context.Context) error {
 			halt := make(chan struct{})
 			<-halt // never return
 			return nil
@@ -188,7 +188,7 @@ func TestServiceRun(t *testing.T) {
 		t.Parallel()
 
 		shortLived := NewActivity("error", nil)
-		longLived := NewActivity("longLived", func(ctx context.Context) error {
+		longLived := NewActivity("longLived", func(_ context.Context) error {
 			return nil
 		})
 
@@ -206,4 +206,166 @@ func TestServiceRun(t *testing.T) {
 		shortLived.validate(t, false)
 		longLived.validate(t, false)
 	})
+}
+
+type fastActivity struct {
+	name string
+}
+
+func (a *fastActivity) Name() string {
+	return a.name
+}
+
+func (a *fastActivity) Run(ctx context.Context) error {
+	<-ctx.Done()
+	return nil
+}
+
+func (*fastActivity) Shutdown(context.Context) error {
+	return nil
+}
+
+func (*fastActivity) Kill() error {
+	return nil
+}
+
+func TestServiceRunDoesNotWaitForKillTimeoutWhenKillReturns(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	runner := service.NewRunner(logrus.StandardLogger(), time.Second, 2*time.Second)
+	runner.RegisterActivities(&fastActivity{name: "fast"})
+
+	start := time.Now()
+	if e, a := 0, runner.Run(ctx); e != a {
+		t.Errorf("expected exit code returned from run to be %d, got %d", e, a)
+	}
+
+	if elapsed := time.Since(start); elapsed > 500*time.Millisecond {
+		t.Fatalf("runner waited for kill timeout after Kill returned; elapsed=%s", elapsed)
+	}
+}
+
+type controlledActivity struct {
+	name            string
+	runStarted      chan struct{}
+	runRelease      chan struct{}
+	runReturned     chan struct{}
+	shutdownStarted chan struct{}
+	killStarted     chan struct{}
+	killRelease     chan struct{}
+	killReturned    chan struct{}
+}
+
+func newControlledActivity(name string) *controlledActivity {
+	return &controlledActivity{
+		name:            name,
+		runStarted:      make(chan struct{}),
+		runRelease:      make(chan struct{}),
+		runReturned:     make(chan struct{}),
+		shutdownStarted: make(chan struct{}),
+		killStarted:     make(chan struct{}),
+		killRelease:     make(chan struct{}),
+		killReturned:    make(chan struct{}),
+	}
+}
+
+func (a *controlledActivity) Name() string {
+	return a.name
+}
+
+func (a *controlledActivity) Run(context.Context) error {
+	defer close(a.runReturned)
+	close(a.runStarted)
+	<-a.runRelease
+	return nil
+}
+
+func (a *controlledActivity) Shutdown(context.Context) error {
+	close(a.shutdownStarted)
+	return nil
+}
+
+func (a *controlledActivity) Kill() error {
+	defer close(a.killReturned)
+	close(a.killStarted)
+	<-a.killRelease
+	return nil
+}
+
+func TestServiceRunWaitsForBothKillAndRunToReturn(t *testing.T) {
+	t.Run("KillReturnsBeforeRun", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		activity := newControlledActivity("kill-before-run")
+		runner := service.NewRunner(logrus.StandardLogger(), time.Second, time.Second)
+		runner.RegisterActivities(activity)
+
+		done := runRunnerAsync(ctx, runner)
+		<-activity.runStarted
+		cancel()
+		<-activity.shutdownStarted
+		<-activity.killStarted
+
+		close(activity.killRelease)
+		<-activity.killReturned
+		assertRunnerNotDone(t, done, "runner returned before Run returned")
+
+		close(activity.runRelease)
+		assertRunnerExitCode(t, done, 0)
+	})
+
+	t.Run("RunReturnsBeforeKill", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		activity := newControlledActivity("run-before-kill")
+		runner := service.NewRunner(logrus.StandardLogger(), time.Second, time.Second)
+		runner.RegisterActivities(activity)
+
+		done := runRunnerAsync(ctx, runner)
+		<-activity.runStarted
+		cancel()
+		<-activity.shutdownStarted
+		<-activity.killStarted
+
+		close(activity.runRelease)
+		<-activity.runReturned
+		assertRunnerNotDone(t, done, "runner returned before Kill returned")
+
+		close(activity.killRelease)
+		assertRunnerExitCode(t, done, 0)
+	})
+}
+
+func runRunnerAsync(ctx context.Context, runner *service.Runner) <-chan int {
+	done := make(chan int, 1)
+	go func() {
+		done <- runner.Run(ctx)
+	}()
+	return done
+}
+
+func assertRunnerNotDone(t *testing.T, done <-chan int, message string) {
+	t.Helper()
+
+	select {
+	case exitCode := <-done:
+		t.Fatalf("%s, exitCode=%d", message, exitCode)
+	case <-time.After(50 * time.Millisecond):
+	}
+}
+
+func assertRunnerExitCode(t *testing.T, done <-chan int, expected int) {
+	t.Helper()
+
+	select {
+	case actual := <-done:
+		if expected != actual {
+			t.Fatalf("expected exit code returned from run to be %d, got %d", expected, actual)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("runner did not return")
+	}
 }

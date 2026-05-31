@@ -2,13 +2,14 @@ package canbus
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"os/exec"
 	"strconv"
 	"strings"
 
 	"github.com/brutella/can"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
 )
@@ -49,7 +50,7 @@ func (c *SocketCANChannel) Run(ctx context.Context) error {
 	// Use netlink to make sure the interface is up
 	link, err := netlink.LinkByName(c.options.InterfaceName)
 	if err != nil {
-		return fmt.Errorf("no link found for %v: %v", c.options.InterfaceName, err)
+		return fmt.Errorf("no link found for %v: %w", c.options.InterfaceName, err)
 	}
 
 	if link.Type() != "can" {
@@ -69,11 +70,12 @@ func (c *SocketCANChannel) Run(ctx context.Context) error {
 		}
 
 		if bounce {
-			cmd := exec.CommandContext(ctx, "ip", "link", "set", c.options.InterfaceName, "down")
+			cmd := exec.CommandContext(ctx, "ip", "link", "set", c.options.InterfaceName, "down") // #nosec G204 -- interface name is argv only.
 			if output, err := cmd.Output(); err != nil {
 				logBase := c.log.WithField("cmd", strings.Join(cmd.Args, " ")).WithField("output", string(output))
-				if errCast, worked := err.(*exec.ExitError); worked {
-					logBase = logBase.WithField("stderr", string(errCast.Stderr))
+				var exitErr *exec.ExitError
+				if stderrors.As(err, &exitErr) {
+					logBase = logBase.WithField("stderr", string(exitErr.Stderr))
 				}
 				logBase.Error("Ip link set down failed")
 				return err
@@ -82,7 +84,7 @@ func (c *SocketCANChannel) Run(ctx context.Context) error {
 			// Re-fetch info
 			link, err = netlink.LinkByName(c.options.InterfaceName)
 			if err != nil {
-				return fmt.Errorf("no link found for %v: %v", c.options.InterfaceName, err)
+				return fmt.Errorf("no link found for %v: %w", c.options.InterfaceName, err)
 			}
 
 			canLink = link.(*netlink.Can)
@@ -93,12 +95,13 @@ func (c *SocketCANChannel) Run(ctx context.Context) error {
 		c.log.WithField("canName", c.options.InterfaceName).WithField("bitRate", c.options.BitRate).Info("Link is down, bringing up link")
 
 		// ip link set can1 up type can bitrate 250000
-		cmd := exec.CommandContext(ctx, "ip", "link", "set", c.options.InterfaceName, "up", "type", "can", "bitrate",
-			strconv.Itoa(int(c.options.BitRate)))
+		args := []string{"ip", "link", "set", c.options.InterfaceName, "up", "type", "can", "bitrate", strconv.Itoa(c.options.BitRate)}
+		cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec G204 -- interface name is argv only.
 		if output, err := cmd.Output(); err != nil {
 			logBase := c.log.WithField("cmd", strings.Join(cmd.Args, " ")).WithField("output", string(output))
-			if errCast, worked := err.(*exec.ExitError); worked {
-				logBase = logBase.WithField("stderr", string(errCast.Stderr))
+			var exitErr *exec.ExitError
+			if stderrors.As(err, &exitErr) {
+				logBase = logBase.WithField("stderr", string(exitErr.Stderr))
 			}
 			logBase.Error("Ip link set up failed")
 			return err
@@ -130,7 +133,7 @@ func (c *SocketCANChannel) Close() error {
 
 	c.bus.Unsubscribe(c.busHandler)
 	if err := c.bus.Disconnect(); err != nil {
-		return errors.Wrap(err, "close underlying bus connection")
+		return pkgerrors.Wrap(err, "close underlying bus connection")
 	}
 
 	return nil

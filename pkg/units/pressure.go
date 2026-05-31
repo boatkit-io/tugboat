@@ -43,19 +43,19 @@ func NewPressure(u PressureUnit, value float32) Pressure {
 }
 
 // Convert converts the unit+value into a new unit type, returning a new unit value of the requested type.
-func (p Pressure) Convert(newUnit PressureUnit) Pressure {
-	v2 := convertTableUnit(pressureConversions, p.Value, p.Unit, newUnit)
+func (u Pressure) Convert(newUnit PressureUnit) Pressure {
+	v2 := convertTableUnit(pressureConversions, u.Value, u.Unit, newUnit)
 	return NewPressure(newUnit, v2)
 }
 
 // Add will add another unit to this one, returning a new unit with the added values
-func (p Pressure) Add(o Pressure) Pressure {
-	v2, u2 := addTableUnits(pressureConversions, p.Value, p.Unit, o.Value, o.Unit)
+func (u Pressure) Add(o Pressure) Pressure {
+	v2, u2 := addTableUnits(pressureConversions, u.Value, u.Unit, o.Value, o.Unit)
 	return NewPressure(u2, v2)
 }
 
 // Sub will subtract another unit from this one, returning a new unit with the subtracted values
-func (p Pressure) Sub(o Pressure) Pressure {
-	v2, u2 := subTableUnits(pressureConversions, p.Value, p.Unit, o.Value, o.Unit)
+func (u Pressure) Sub(o Pressure) Pressure {
+	v2, u2 := subTableUnits(pressureConversions, u.Value, u.Unit, o.Value, o.Unit)
 	return NewPressure(u2, v2)
 }

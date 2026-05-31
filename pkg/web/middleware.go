@@ -43,7 +43,6 @@ func (w *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 // end of each request.
 func RequestMW(log *logrus.Logger, next http.Handler) http.Handler {
 	f := func(w http.ResponseWriter, r *http.Request) {
-
 		st := time.Now()
 
 		ww := &responseWriter{

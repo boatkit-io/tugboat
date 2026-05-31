@@ -1,0 +1,17 @@
+[tools]
+go = "1.24"
+node = "lts"
+golangci-lint = "latest"
+gotestsum = "latest"
+
+[tasks.test]
+description = "Run Go tests with gotestsum and coverage"
+run = "gotestsum -- -coverprofile=c.out ./..."
+
+[tasks.lint]
+description = "Run linters"
+run = "golangci-lint run --timeout=5m"
+
+[tasks.generate]
+description = "Run go generate"
+run = "go generate ./..."

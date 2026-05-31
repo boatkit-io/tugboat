@@ -7,13 +7,18 @@ import (
 	"sync"
 )
 
-// SubscriptionId is a strongly-typed opaque token for representing a subscription, which can be passed back
-// in to unsubscrbe.
-type SubscriptionId uint
+// SubscriptionID is a strongly-typed opaque token for representing a subscription, which can be passed back
+// in to unsubscribe.
+type SubscriptionID uint
+
+// SubscriptionId preserves the original exported name for existing callers.
+//
+//revive:disable-next-line:var-naming
+type SubscriptionId = SubscriptionID
 
 // trackedSub is an internal tracking struct for a single subscription
 type trackedSub[F any] struct {
-	subId    SubscriptionId
+	subID    SubscriptionID
 	callback F
 	// Pre-fetch the reflection value for the callback to save some cycles on every callback
 	callbackReflect reflect.Value
@@ -23,8 +28,8 @@ type trackedSub[F any] struct {
 // Event, and then zero or more subscribers can listen to it and/or fire messages into it.
 type Event[F any] struct {
 	subMutex  sync.Mutex
-	lastSubId SubscriptionId
-	subs      map[SubscriptionId]*trackedSub[F]
+	lastSubID SubscriptionID
+	subs      map[SubscriptionID]*trackedSub[F]
 	argKinds  []reflect.Kind
 }
 
@@ -44,40 +49,40 @@ func NewEvent[F any]() Event[F] {
 	}
 
 	return Event[F]{
-		lastSubId: 0,
-		subs:      map[SubscriptionId]*trackedSub[F]{},
+		lastSubID: 0,
+		subs:      map[SubscriptionID]*trackedSub[F]{},
 		argKinds:  kinds,
 	}
 }
 
-// Subscribe will subscribe to any events fired from the Event object, returning a SubscriptionId for later unsubscribing (if desired).
-func (e *Event[F]) Subscribe(callback F) SubscriptionId {
+// Subscribe will subscribe to any events fired from the Event object, returning a SubscriptionID for later unsubscribing (if desired).
+func (e *Event[F]) Subscribe(callback F) SubscriptionID {
 	e.subMutex.Lock()
 	defer e.subMutex.Unlock()
 
-	e.lastSubId++
+	e.lastSubID++
 	ts := &trackedSub[F]{
-		subId:           e.lastSubId,
+		subID:           e.lastSubID,
 		callback:        callback,
 		callbackReflect: reflect.ValueOf(callback),
 	}
 
-	e.subs[ts.subId] = ts
+	e.subs[ts.subID] = ts
 
-	return ts.subId
+	return ts.subID
 }
 
-// Unsubscribe will unsubscribe a specific SubscriptionId from the Event's subscribed callbacks.
-func (e *Event[F]) Unsubscribe(subId SubscriptionId) error {
+// Unsubscribe will unsubscribe a specific SubscriptionID from the Event's subscribed callbacks.
+func (e *Event[F]) Unsubscribe(subID SubscriptionID) error {
 	e.subMutex.Lock()
 	defer e.subMutex.Unlock()
 
-	_, exists := e.subs[subId]
+	_, exists := e.subs[subID]
 	if !exists {
-		return fmt.Errorf("subscription %d not found", subId)
+		return fmt.Errorf("subscription %d not found", subID)
 	}
 
-	delete(e.subs, subId)
+	delete(e.subs, subID)
 
 	return nil
 }

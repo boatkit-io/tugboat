@@ -1,0 +1,85 @@
+version: "2"
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - copyloopvar
+    - dogsled
+    - errcheck
+    - errorlint
+    - exhaustive
+    - funlen
+    - gochecknoinits
+    - gocritic
+    - gocyclo
+    - gosec
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - nakedret
+    - revive
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+  settings:
+    dupl:
+      threshold: 100
+    errcheck:
+      check-blank: true
+    exhaustive:
+      default-signifies-exhaustive: true
+    funlen:
+      lines: 500
+      statements: 150
+    gocyclo:
+      min-complexity: 50
+    lll:
+      line-length: 140
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - gosec
+        path: \.go
+        text: G115
+      - linters:
+          - errcheck
+          - funlen
+          - gochecknoglobals
+          - gocyclo
+          - gosec
+        path: _test\.go
+      - linters:
+          - staticcheck
+        path: _test\.go
+        text: SA5011
+      - linters:
+          - gocyclo
+        path: _rs\.go
+      - linters:
+          - lll
+        source: "^//go:generate "
+      - path: (.+)\.go$
+        text: declaration of "err" shadows declaration at
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

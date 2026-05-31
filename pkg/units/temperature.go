@@ -36,22 +36,22 @@ func NewTemperature(u TemperatureUnit, value float32) Temperature {
 }
 
 // Convert converts the unit+value into a new unit type, returning a new unit value of the requested type.
-func (p Temperature) Convert(newUnit TemperatureUnit) Temperature {
+func (u Temperature) Convert(newUnit TemperatureUnit) Temperature {
 	// Shortcut (ez optimization)
-	if p.Unit == newUnit {
-		return p
+	if u.Unit == newUnit {
+		return u
 	}
 
 	var inKelvin float32
-	switch p.Unit {
+	switch u.Unit {
 	case Kelvin:
-		inKelvin = p.Value
+		inKelvin = u.Value
 	case Fahrenheit:
-		inKelvin = (p.Value + 459.67) * (5.0 / 9.0)
+		inKelvin = (u.Value + 459.67) * (5.0 / 9.0)
 	case Celsius:
-		inKelvin = p.Value + 273.15
+		inKelvin = u.Value + 273.15
 	default:
-		panic(fmt.Sprintf("Unknown old temperature unit %+v", p.Unit))
+		panic(fmt.Sprintf("Unknown old temperature unit %+v", u.Unit))
 	}
 	switch newUnit {
 	case Kelvin:

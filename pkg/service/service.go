@@ -112,7 +112,7 @@ func (r *Runner) runActivity(ctx context.Context, activity Activity) {
 		cancel()
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), r.shutdownTimeout)
+	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), r.shutdownTimeout)
 	defer cancel()
 
 	shutdownReturned := make(chan struct{})
@@ -129,15 +129,26 @@ func (r *Runner) runActivity(ctx context.Context, activity Activity) {
 	case <-shutdownReturned:
 	}
 
-	killCtx, cancel := context.WithTimeout(context.Background(), r.killTimeout)
+	killCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), r.killTimeout)
 	defer cancel()
 
+	killReturned := make(chan struct{})
 	go func() {
+		defer close(killReturned)
 		if err := activity.Kill(); err != nil {
 			alog.WithError(err).Error("kill activity")
 		}
 	}()
 
-	// Block until we've hit our kill timeout.
-	<-killCtx.Done()
+	// Block until we've either hit our kill timeout or both Kill and Run have returned.
+	for killReturned != nil || runReturned != nil {
+		select {
+		case <-killCtx.Done():
+			return
+		case <-killReturned:
+			killReturned = nil
+		case <-runReturned:
+			runReturned = nil
+		}
+	}
 }

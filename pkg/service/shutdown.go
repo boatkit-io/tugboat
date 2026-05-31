@@ -34,7 +34,7 @@ func (*Shutdown) Name() string {
 	return "shutdown"
 }
 
-// Run blocks until an os.Interrupt or syscall.SIGTERM signal is recieved, or the context
+// Run blocks until an os.Interrupt or syscall.SIGTERM signal is received, or the context
 // is canceled.
 func (s *Shutdown) Run(ctx context.Context) error {
 	c := make(chan os.Signal, 1)
