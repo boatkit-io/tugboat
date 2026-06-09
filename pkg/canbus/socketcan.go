@@ -60,11 +60,29 @@ func (c *SocketCANChannel) Run(ctx context.Context) error {
 		return fmt.Errorf("no link found for %v: %w", c.options.InterfaceName, err)
 	}
 
-	if link.Type() != "can" {
+	if link.Type() != "can" && link.Type() != "vcan" {
 		return fmt.Errorf("invalid linktype %q", link.Type())
 	}
 
-	canLink := link.(*netlink.Can)
+	var canLink *netlink.Can
+	if link.Type() == "vcan" {
+		if link.Attrs().OperState == netlink.OperDown {
+			c.log.WithField("canName", c.options.InterfaceName).Info("vcan link is down, bringing up link")
+			cmd := exec.CommandContext(ctx, "ip", "link", "set", c.options.InterfaceName, "up") // #nosec G204 -- interface name is argv only.
+			if output, err := cmd.Output(); err != nil {
+				logBase := c.log.WithField("cmd", strings.Join(cmd.Args, " ")).WithField("output", string(output))
+				var exitErr *exec.ExitError
+				if stderrors.As(err, &exitErr) {
+					logBase = logBase.WithField("stderr", string(exitErr.Stderr))
+				}
+				logBase.Error("Ip link set up failed")
+				return err
+			}
+		}
+		goto linkReady
+	}
+
+	canLink = link.(*netlink.Can)
 
 	if canLink.Attrs().OperState == netlink.OperUp {
 		bounce := false
@@ -115,6 +133,8 @@ func (c *SocketCANChannel) Run(ctx context.Context) error {
 		}
 	}
 
+linkReady:
+
 	if c.isClosed() {
 		return nil
 	}
@@ -125,8 +145,11 @@ func (c *SocketCANChannel) Run(ctx context.Context) error {
 		return err
 	}
 
-	busHandler := can.NewHandler(c.options.MessageHandler)
-	bus.Subscribe(busHandler)
+	var busHandler can.Handler
+	if c.options.MessageHandler != nil {
+		busHandler = can.NewHandler(c.options.MessageHandler)
+		bus.Subscribe(busHandler)
+	}
 
 	c.mu.Lock()
 	closed := c.closed
@@ -136,7 +159,9 @@ func (c *SocketCANChannel) Run(ctx context.Context) error {
 	}
 	c.mu.Unlock()
 	if closed {
-		bus.Unsubscribe(busHandler)
+		if busHandler != nil {
+			bus.Unsubscribe(busHandler)
+		}
 		if err := bus.Disconnect(); err != nil && !isClosedCANBusError(err) {
 			return pkgerrors.Wrap(err, "close underlying bus connection")
 		}
