@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 )
 
@@ -17,6 +18,8 @@ type Shutdown struct {
 	// mainCancel is passed in to NewShutdown and it should be the cancelFunc that
 	// communicates to everything that its time to stop (gracefully).
 	mainCancel context.CancelFunc
+	done       chan struct{}
+	doneOnce   sync.Once
 }
 
 // NewShutdown returns a new Shutdown type that implements the Activity interface to
@@ -26,6 +29,7 @@ type Shutdown struct {
 func NewShutdown(mainCancel context.CancelFunc) *Shutdown {
 	return &Shutdown{
 		mainCancel: mainCancel,
+		done:       make(chan struct{}),
 	}
 }
 
@@ -39,10 +43,10 @@ func (*Shutdown) Name() string {
 func (s *Shutdown) Run(ctx context.Context) error {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(c)
 
 	select {
 	case <-c:
-		signal.Reset(os.Interrupt, syscall.SIGTERM)
 		s.mainCancel()
 	case <-ctx.Done():
 		// even though 99% of the time this will belong to the context passed
@@ -50,6 +54,7 @@ func (s *Shutdown) Run(ctx context.Context) error {
 		s.mainCancel()
 	}
 
+	<-s.done
 	return nil
 }
 
@@ -58,7 +63,10 @@ func (*Shutdown) Shutdown(_ context.Context) error {
 	return nil
 }
 
-// Kill is a no-op, but it implements the interface necessary for Activity.
-func (*Shutdown) Kill() error {
+// Kill releases Run after shutdown has started.
+func (s *Shutdown) Kill() error {
+	s.doneOnce.Do(func() {
+		close(s.done)
+	})
 	return nil
 }

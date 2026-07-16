@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -243,6 +244,50 @@ func TestServiceRunDoesNotWaitForKillTimeoutWhenKillReturns(t *testing.T) {
 
 	if elapsed := time.Since(start); elapsed > 500*time.Millisecond {
 		t.Fatalf("runner waited for kill timeout after Kill returned; elapsed=%s", elapsed)
+	}
+}
+
+func TestShutdownRunReturnsAfterKill(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	mainCanceled := make(chan struct{})
+	var mainCancelOnce sync.Once
+	shutdown := service.NewShutdown(func() {
+		mainCancelOnce.Do(func() {
+			close(mainCanceled)
+		})
+	})
+
+	done := make(chan error, 1)
+	go func() {
+		done <- shutdown.Run(ctx)
+	}()
+
+	cancel()
+	select {
+	case <-mainCanceled:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("shutdown did not call main cancel")
+	}
+
+	select {
+	case err := <-done:
+		t.Fatalf("shutdown Run returned before Kill, err=%v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	if err := shutdown.Kill(); err != nil {
+		t.Fatalf("Kill failed: %v", err)
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("Run returned error: %v", err)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("shutdown Run did not return after Kill")
+	}
+	if err := shutdown.Kill(); err != nil {
+		t.Fatalf("second Kill failed: %v", err)
 	}
 }
 
