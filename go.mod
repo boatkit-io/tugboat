@@ -9,7 +9,7 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.11.1
 	github.com/vishvananda/netlink v1.3.1
-	go.bug.st/serial v1.7.1
+	go.bug.st/serial v1.8.0
 )
 
 require (
@@ -19,4 +19,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-require golang.org/x/sys v0.45.0 // indirect
+require golang.org/x/sys v0.47.0 // indirect
