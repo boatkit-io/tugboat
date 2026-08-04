@@ -75,7 +75,7 @@ func RequestMW(log *logrus.Logger, next http.Handler) http.Handler {
 				"requestURI":  r.RequestURI,
 				"requestTime": time.Since(st),
 				"status":      ww.status,
-			}).Info("completed request")
+			}).Debug("completed request")
 		}()
 
 		ww.Header().Set(requestIDHeader, id)

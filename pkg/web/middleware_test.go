@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,6 +10,25 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
+
+func TestRequestMiddlewareLogsCompletedRequestAtDebug(t *testing.T) {
+	t.Parallel()
+
+	log := logrus.New()
+	var output bytes.Buffer
+	log.SetOutput(&output)
+	handler := RequestMW(log, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/status", nil))
+	require.Empty(t, output.String())
+
+	log.SetLevel(logrus.DebugLevel)
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/status", nil))
+	require.Contains(t, output.String(), "level=debug")
+	require.Contains(t, output.String(), "completed request")
+}
 
 type streamingResponseRecorder struct {
 	*httptest.ResponseRecorder
