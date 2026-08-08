@@ -43,14 +43,24 @@ type USBCANChannelOptions struct {
 	FrameHandler   can.HandlerFunc
 }
 
+type serialPortOpener func(string, *serial.Mode) (serial.Port, error)
+
+type usbCANOpenResult struct {
+	port serial.Port
+	err  error
+}
+
 // USBCANChannel represents a single USB-CAN-based canbus channel for sending/receiving CAN frames
 type USBCANChannel struct {
 	options USBCANChannelOptions
 
-	startMu sync.Mutex
-	mu      sync.Mutex
-	port    serial.Port
-	closed  bool
+	startMu  sync.Mutex
+	mu       sync.Mutex
+	port     serial.Port
+	closed   bool
+	done     chan struct{}
+	opening  chan struct{}
+	openPort serialPortOpener
 
 	log *logrus.Logger
 }
@@ -58,55 +68,126 @@ type USBCANChannel struct {
 // NewUSBCANChannel returns a Channel object based on USBCAN and the given options.  ChannelOptions are required settings.
 func NewUSBCANChannel(log *logrus.Logger, options USBCANChannelOptions) *USBCANChannel {
 	c := USBCANChannel{
-		options: options,
-		log:     log,
+		options:  options,
+		log:      log,
+		done:     make(chan struct{}),
+		openPort: serial.Open,
 	}
 
 	return &c
 }
 
 // Start synchronously opens and configures the serial CAN interface.
-func (c *USBCANChannel) Start(_ context.Context) error {
+func (c *USBCANChannel) Start(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	c.startMu.Lock()
 	defer c.startMu.Unlock()
 
-	c.mu.Lock()
-	if c.closed {
+	for {
+		c.mu.Lock()
+		if c.done == nil {
+			c.done = make(chan struct{})
+		}
+		if c.closed {
+			c.mu.Unlock()
+			return errors.New("USBCAN channel is closed")
+		}
+		if c.port != nil {
+			c.mu.Unlock()
+			return nil
+		}
+		if c.opening == nil {
+			break
+		}
+		opening := c.opening
+		done := c.done
 		c.mu.Unlock()
-		return errors.New("USBCAN channel is closed")
+		select {
+		case <-opening:
+			continue
+		case <-done:
+			return errors.New("USBCAN channel is closed")
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
-	if c.port != nil {
-		c.mu.Unlock()
-		return nil
+	opening := make(chan struct{})
+	c.opening = opening
+	done := c.done
+	openPort := c.openPort
+	if openPort == nil {
+		openPort = serial.Open
 	}
 	c.mu.Unlock()
 
 	mode := &serial.Mode{
 		BaudRate: c.options.SerialBaudRate,
 	}
-	port, err := serial.Open(c.options.SerialPortName, mode)
-	if err != nil {
-		return err
-	}
+	resultCh := make(chan usbCANOpenResult, 1)
+	go func() {
+		port, err := openPort(c.options.SerialPortName, mode)
+		if err == nil {
+			err = c.sendSettingsFrame(port)
+		}
+		resultCh <- usbCANOpenResult{port: port, err: err}
+	}()
 
-	if err := c.sendSettingsFrame(port); err != nil {
-		_ = port.Close()
-		return err
+	var result usbCANOpenResult
+	select {
+	case result = <-resultCh:
+	case <-ctx.Done():
+		c.abandonOpen(opening, resultCh)
+		return ctx.Err()
+	case <-done:
+		c.abandonOpen(opening, resultCh)
+		return errors.New("USBCAN channel is closed")
 	}
 
 	c.mu.Lock()
-	if c.closed {
+	c.finishOpenLocked(opening)
+	ctxErr := ctx.Err()
+	if result.err != nil || c.closed || ctxErr != nil {
+		closed := c.closed
 		c.mu.Unlock()
-		_ = port.Close()
-		return errors.New("USBCAN channel is closed")
+		if result.port != nil {
+			_ = result.port.Close()
+		}
+		if result.err != nil {
+			return result.err
+		}
+		if closed {
+			return errors.New("USBCAN channel is closed")
+		}
+		return ctxErr
 	}
-	c.port = port
+	c.port = result.port
 	c.mu.Unlock()
 
 	c.log.WithField("portName", c.options.SerialPortName).
 		Info("Opened USBCAN")
 
 	return nil
+}
+
+func (c *USBCANChannel) abandonOpen(opening chan struct{}, resultCh <-chan usbCANOpenResult) {
+	go func() {
+		result := <-resultCh
+		if result.port != nil {
+			_ = result.port.Close()
+		}
+		c.mu.Lock()
+		c.finishOpenLocked(opening)
+		c.mu.Unlock()
+	}()
+}
+
+func (c *USBCANChannel) finishOpenLocked(opening chan struct{}) {
+	if c.opening == opening {
+		c.opening = nil
+		close(opening)
+	}
 }
 
 // Run starts listening after synchronously opening the serial CAN interface.
@@ -235,11 +316,15 @@ func (c *USBCANChannel) parseFrames(bufAddr *[]byte) error {
 // Close shuts down the channel
 func (c *USBCANChannel) Close() error {
 	c.mu.Lock()
+	if c.done == nil {
+		c.done = make(chan struct{})
+	}
 	if c.closed {
 		c.mu.Unlock()
 		return nil
 	}
 	c.closed = true
+	close(c.done)
 	port := c.port
 	c.port = nil
 	c.mu.Unlock()

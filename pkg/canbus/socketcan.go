@@ -54,16 +54,17 @@ func (c *SocketCANChannel) Start(ctx context.Context) error {
 	defer c.startMu.Unlock()
 
 	c.mu.Lock()
-	started := c.bus != nil
-	c.mu.Unlock()
-	if started {
+	if c.closed {
+		c.mu.Unlock()
+		return stderrors.New("SocketCAN channel is closed")
+	}
+	if c.bus != nil {
+		c.mu.Unlock()
 		return nil
 	}
+	c.mu.Unlock()
 
 	// Referencing https://github.com/angelodlfrtr/go-can/blob/master/transports/socketcan.go
-	if c.isClosed() {
-		return nil
-	}
 
 	// Use netlink to make sure the interface is up
 	link, err := netlink.LinkByName(c.options.InterfaceName)
@@ -147,7 +148,7 @@ func (c *SocketCANChannel) Start(ctx context.Context) error {
 linkReady:
 
 	if c.isClosed() {
-		return nil
+		return stderrors.New("SocketCAN channel is closed")
 	}
 
 	// Open the brutella can bus
@@ -176,7 +177,7 @@ linkReady:
 		if err := bus.Disconnect(); err != nil && !isClosedCANBusError(err) {
 			return pkgerrors.Wrap(err, "close underlying bus connection")
 		}
-		return nil
+		return stderrors.New("SocketCAN channel is closed")
 	}
 
 	c.log.WithField("interfaceName", c.options.InterfaceName).
@@ -217,6 +218,9 @@ var _ Interface = (*SocketCANChannel)(nil)
 
 // Close shuts down the channel
 func (c *SocketCANChannel) Close() error {
+	c.startMu.Lock()
+	defer c.startMu.Unlock()
+
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
@@ -225,6 +229,8 @@ func (c *SocketCANChannel) Close() error {
 	c.closed = true
 	bus := c.bus
 	busHandler := c.busHandler
+	c.bus = nil
+	c.busHandler = nil
 	c.mu.Unlock()
 
 	if bus == nil {

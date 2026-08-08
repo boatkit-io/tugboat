@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/brutella/can"
 	"github.com/sirupsen/logrus"
@@ -51,6 +52,29 @@ func TestSocketCANWriteAfterCloseReturnsError(t *testing.T) {
 
 	require.NoError(t, c.Close())
 	require.ErrorContains(t, c.WriteFrame(can.Frame{}), "canbus channel is closed")
+}
+
+func TestSocketCANStartAfterCloseReturnsError(t *testing.T) {
+	c := &SocketCANChannel{}
+
+	require.NoError(t, c.Close())
+	require.ErrorContains(t, c.Start(context.Background()), "SocketCAN channel is closed")
+}
+
+func TestSocketCANCloseSerializesWithStartup(t *testing.T) {
+	c := &SocketCANChannel{}
+	c.startMu.Lock()
+	closeDone := make(chan error, 1)
+	go func() { closeDone <- c.Close() }()
+
+	select {
+	case <-closeDone:
+		t.Fatal("Close returned while startup still owned the lifecycle lock")
+	case <-time.After(20 * time.Millisecond):
+	}
+	c.startMu.Unlock()
+	require.NoError(t, <-closeDone)
+	require.True(t, c.isClosed())
 }
 
 func TestSocketCANStartReturnsMissingInterfaceError(t *testing.T) {
