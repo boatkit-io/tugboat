@@ -1,6 +1,6 @@
 module github.com/boatkit-io/tugboat
 
-go 1.26.3
+go 1.26.5
 
 require (
 	github.com/brutella/can v0.0.2

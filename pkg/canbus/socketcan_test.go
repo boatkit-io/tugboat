@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/brutella/can"
 	"github.com/sirupsen/logrus"
@@ -54,6 +53,17 @@ func TestSocketCANWriteAfterCloseReturnsError(t *testing.T) {
 	require.ErrorContains(t, c.WriteFrame(can.Frame{}), "canbus channel is closed")
 }
 
+func TestSocketCANStartReturnsMissingInterfaceError(t *testing.T) {
+	channel := NewSocketCANChannel(logrus.New(), SocketCANChannelOptions{
+		InterfaceName: "boatkit-test-interface-that-does-not-exist",
+		BitRate:       250000,
+	})
+
+	err := channel.Start(context.Background())
+
+	require.ErrorContains(t, err, "no link found")
+}
+
 func TestSocketCANChannelVCan0WriteFrame(t *testing.T) {
 	requireVCan0(t)
 
@@ -69,13 +79,12 @@ func TestSocketCANChannelVCan0WriteFrame(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	require.NoError(t, channel.Start(ctx))
 
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- channel.Run(ctx)
 	}()
-
-	waitForSocketCANBus(t, channel, errCh)
 	t.Cleanup(func() {
 		cancel()
 		assert.NoError(t, channel.Close())
@@ -104,13 +113,12 @@ func TestSocketCANChannelVCan0AllowsNilMessageHandler(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	require.NoError(t, channel.Start(ctx))
 
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- channel.Run(ctx)
 	}()
-
-	waitForSocketCANBus(t, channel, errCh)
 	t.Cleanup(func() {
 		cancel()
 		assert.NoError(t, channel.Close())
@@ -133,29 +141,5 @@ func requireVCan0(t *testing.T) {
 	}
 	if !strings.Contains(string(output), "UP") {
 		t.Skipf("vcan0 is not up: %s", string(output))
-	}
-}
-
-func waitForSocketCANBus(t *testing.T, channel *SocketCANChannel, errCh <-chan error) {
-	t.Helper()
-
-	deadline := time.After(2 * time.Second)
-	tick := time.NewTicker(10 * time.Millisecond)
-	defer tick.Stop()
-
-	for {
-		select {
-		case err := <-errCh:
-			t.Fatalf("SocketCAN channel exited before startup completed: %v", err)
-		case <-deadline:
-			t.Fatal("timed out waiting for SocketCAN channel startup")
-		case <-tick.C:
-			channel.mu.Lock()
-			started := channel.bus != nil
-			channel.mu.Unlock()
-			if started {
-				return
-			}
-		}
 	}
 }

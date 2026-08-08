@@ -2,8 +2,10 @@ package canbus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
+	"sync"
 
 	"github.com/brutella/can"
 	"github.com/sirupsen/logrus"
@@ -45,13 +47,16 @@ type USBCANChannelOptions struct {
 type USBCANChannel struct {
 	options USBCANChannelOptions
 
-	port serial.Port
+	startMu sync.Mutex
+	mu      sync.Mutex
+	port    serial.Port
+	closed  bool
 
 	log *logrus.Logger
 }
 
 // NewUSBCANChannel returns a Channel object based on USBCAN and the given options.  ChannelOptions are required settings.
-func NewUSBCANChannel(log *logrus.Logger, options USBCANChannelOptions) Interface {
+func NewUSBCANChannel(log *logrus.Logger, options USBCANChannelOptions) *USBCANChannel {
 	c := USBCANChannel{
 		options: options,
 		log:     log,
@@ -60,8 +65,22 @@ func NewUSBCANChannel(log *logrus.Logger, options USBCANChannelOptions) Interfac
 	return &c
 }
 
-// Run opens the serial interface and starts listening.
-func (c *USBCANChannel) Run(_ context.Context) error {
+// Start synchronously opens and configures the serial CAN interface.
+func (c *USBCANChannel) Start(_ context.Context) error {
+	c.startMu.Lock()
+	defer c.startMu.Unlock()
+
+	c.mu.Lock()
+	if c.closed {
+		c.mu.Unlock()
+		return errors.New("USBCAN channel is closed")
+	}
+	if c.port != nil {
+		c.mu.Unlock()
+		return nil
+	}
+	c.mu.Unlock()
+
 	mode := &serial.Mode{
 		BaudRate: c.options.SerialBaudRate,
 	}
@@ -70,14 +89,41 @@ func (c *USBCANChannel) Run(_ context.Context) error {
 		return err
 	}
 
-	c.port = port
-
-	if err := c.sendSettingsFrame(); err != nil {
+	if err := c.sendSettingsFrame(port); err != nil {
+		_ = port.Close()
 		return err
 	}
 
+	c.mu.Lock()
+	if c.closed {
+		c.mu.Unlock()
+		_ = port.Close()
+		return errors.New("USBCAN channel is closed")
+	}
+	c.port = port
+	c.mu.Unlock()
+
 	c.log.WithField("portName", c.options.SerialPortName).
-		Info("Opened USBCAN and listening")
+		Info("Opened USBCAN")
+
+	return nil
+}
+
+// Run starts listening after synchronously opening the serial CAN interface.
+func (c *USBCANChannel) Run(ctx context.Context) error {
+	if err := c.Start(ctx); err != nil {
+		return err
+	}
+
+	c.mu.Lock()
+	port := c.port
+	c.mu.Unlock()
+	if port == nil {
+		return errors.New("USBCAN channel is not open")
+	}
+
+	c.log.WithField("portName", c.options.SerialPortName).
+		Info("Listening on USBCAN")
 
 	pending := []byte{}
 	for {
@@ -188,16 +234,31 @@ func (c *USBCANChannel) parseFrames(bufAddr *[]byte) error {
 
 // Close shuts down the channel
 func (c *USBCANChannel) Close() error {
-	if c.port != nil {
-		if err := c.port.Close(); err != nil {
-			return err
-		}
+	c.mu.Lock()
+	if c.closed {
+		c.mu.Unlock()
+		return nil
 	}
-	return nil
+	c.closed = true
+	port := c.port
+	c.port = nil
+	c.mu.Unlock()
+	if port == nil {
+		return nil
+	}
+	return port.Close()
 }
 
 // WriteFrame will send a CAN frame to the channel
 func (c *USBCANChannel) WriteFrame(frame can.Frame) error {
+	c.mu.Lock()
+	port := c.port
+	closed := c.closed
+	c.mu.Unlock()
+	if closed || port == nil {
+		return errors.New("USBCAN channel is not open")
+	}
+
 	buf := []byte{
 		0xaa,
 		0xC0 | frame.Length,
@@ -214,7 +275,7 @@ func (c *USBCANChannel) WriteFrame(frame can.Frame) error {
 	buf = append(buf, frame.Data[0:frame.Length]...)
 	buf = append(buf, 0x55)
 
-	o, err := c.port.Write(buf)
+	o, err := port.Write(buf)
 	if o != len(buf) {
 		return fmt.Errorf("WriteFrame sent %d of %d bytes", o, len(buf))
 	}
@@ -226,7 +287,7 @@ func (c *USBCANChannel) WriteFrame(frame can.Frame) error {
 }
 
 // sendSettingsFrame is a helper to send the startup settings frame to set the bitrate appropriately
-func (c *USBCANChannel) sendSettingsFrame() error {
+func (c *USBCANChannel) sendSettingsFrame(port serial.Port) error {
 	br, err := mapBitRate(c.options.BitRate)
 	if err != nil {
 		return err
@@ -256,7 +317,7 @@ func (c *USBCANChannel) sendSettingsFrame() error {
 	}
 	buf[19] = calcChecksum(buf, 2, 17)
 
-	o, err := c.port.Write(buf)
+	o, err := port.Write(buf)
 	if o != len(buf) {
 		return fmt.Errorf("sendSettingsFrame sent %d of %d bytes", o, len(buf))
 	}
@@ -266,6 +327,8 @@ func (c *USBCANChannel) sendSettingsFrame() error {
 
 	return nil
 }
+
+var _ Interface = (*USBCANChannel)(nil)
 
 // mapBitRate is a helper to map numeric bitrates to their byte values
 func mapBitRate(bitRate int) (byte, error) {

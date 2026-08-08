@@ -32,8 +32,9 @@ type SocketCANChannel struct {
 
 	log *logrus.Logger
 
-	mu     sync.Mutex
-	closed bool
+	startMu sync.Mutex
+	mu      sync.Mutex
+	closed  bool
 }
 
 // NewSocketCANChannel returns a Channel object based on SocketCAN and the given options.  ChannelOptions are required settings.
@@ -46,9 +47,19 @@ func NewSocketCANChannel(log *logrus.Logger, options SocketCANChannelOptions) *S
 	return &c
 }
 
-// Run opens the canbus channel and starts listening.  This will also, as needed, use netlink to actually call into the OS
-// to start the channel and/or set the bitrate, as needed.
-func (c *SocketCANChannel) Run(ctx context.Context) error {
+// Start synchronously opens the CAN bus channel. This will also, as needed,
+// use netlink to start the channel and set the bitrate.
+func (c *SocketCANChannel) Start(ctx context.Context) error {
+	c.startMu.Lock()
+	defer c.startMu.Unlock()
+
+	c.mu.Lock()
+	started := c.bus != nil
+	c.mu.Unlock()
+	if started {
+		return nil
+	}
+
 	// Referencing https://github.com/angelodlfrtr/go-can/blob/master/transports/socketcan.go
 	if c.isClosed() {
 		return nil
@@ -169,7 +180,27 @@ linkReady:
 	}
 
 	c.log.WithField("interfaceName", c.options.InterfaceName).
-		Info("Opened SocketCAN and listening")
+		Info("Opened SocketCAN")
+
+	return nil
+}
+
+// Run starts listening after synchronously opening the CAN bus channel.
+func (c *SocketCANChannel) Run(ctx context.Context) error {
+	if err := c.Start(ctx); err != nil {
+		return err
+	}
+
+	c.mu.Lock()
+	bus := c.bus
+	closed := c.closed
+	c.mu.Unlock()
+	if closed || bus == nil {
+		return nil
+	}
+
+	c.log.WithField("interfaceName", c.options.InterfaceName).
+		Info("Listening on SocketCAN")
 
 	// Start listening for messages
 	if err := bus.ConnectAndPublish(); err != nil {
@@ -181,6 +212,8 @@ linkReady:
 
 	return nil
 }
+
+var _ Interface = (*SocketCANChannel)(nil)
 
 // Close shuts down the channel
 func (c *SocketCANChannel) Close() error {
