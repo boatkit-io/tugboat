@@ -21,7 +21,6 @@ func main() {
 		},
 	}
 	c := canbus.NewUSBCANChannel(logrus.StandardLogger(), options)
-	if err := c.Run(ctx); err != nil {
-		fmt.Printf("error: %v\n", err)
-	}
+	err := c.Run(ctx)
+	fmt.Printf("error: %v\n", err)
 }

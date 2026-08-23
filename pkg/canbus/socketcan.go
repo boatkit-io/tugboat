@@ -4,6 +4,7 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
+	"net"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -19,6 +20,7 @@ import (
 type SocketCANChannelOptions struct {
 	InterfaceName        string
 	BitRate              int
+	RestartMilliseconds  uint32
 	ForceBounceInterface bool
 	MessageHandler       can.HandlerFunc
 }
@@ -77,6 +79,7 @@ func (c *SocketCANChannel) Start(ctx context.Context) error {
 	}
 
 	var canLink *netlink.Can
+	bounceReason := ""
 	if link.Type() == "vcan" {
 		if link.Attrs().OperState == netlink.OperDown {
 			c.log.WithField("canName", c.options.InterfaceName).Info("vcan link is down, bringing up link")
@@ -96,43 +99,33 @@ func (c *SocketCANChannel) Start(ctx context.Context) error {
 
 	canLink = link.(*netlink.Can)
 
-	if canLink.Attrs().OperState == netlink.OperUp {
-		bounce := false
-		if canLink.BitRate != uint32(c.options.BitRate) {
-			c.log.WithField("bitRate", canLink.BitRate).Info("Channel currently has wrong bitrate, bringing down")
-			bounce = true
-		} else if c.options.ForceBounceInterface {
-			c.log.Info("Bouncing channel")
-			bounce = true
+	bounceReason = socketCANBounceReason(canLink, c.options)
+	if bounceReason != "" && socketCANLinkIsUp(canLink) {
+		c.log.WithField("reason", bounceReason).Info("Bringing down SocketCAN interface")
+		cmd := exec.CommandContext(ctx, "ip", "link", "set", c.options.InterfaceName, "down") // #nosec G204 -- interface name is argv only.
+		if output, err := cmd.Output(); err != nil {
+			logBase := c.log.WithField("cmd", strings.Join(cmd.Args, " ")).WithField("output", string(output))
+			var exitErr *exec.ExitError
+			if stderrors.As(err, &exitErr) {
+				logBase = logBase.WithField("stderr", string(exitErr.Stderr))
+			}
+			logBase.Error("Ip link set down failed")
+			return err
 		}
 
-		if bounce {
-			cmd := exec.CommandContext(ctx, "ip", "link", "set", c.options.InterfaceName, "down") // #nosec G204 -- interface name is argv only.
-			if output, err := cmd.Output(); err != nil {
-				logBase := c.log.WithField("cmd", strings.Join(cmd.Args, " ")).WithField("output", string(output))
-				var exitErr *exec.ExitError
-				if stderrors.As(err, &exitErr) {
-					logBase = logBase.WithField("stderr", string(exitErr.Stderr))
-				}
-				logBase.Error("Ip link set down failed")
-				return err
-			}
-
-			// Re-fetch info
-			link, err = netlink.LinkByName(c.options.InterfaceName)
-			if err != nil {
-				return fmt.Errorf("no link found for %v: %w", c.options.InterfaceName, err)
-			}
-
-			canLink = link.(*netlink.Can)
+		// Re-fetch info
+		link, err = netlink.LinkByName(c.options.InterfaceName)
+		if err != nil {
+			return fmt.Errorf("no link found for %v: %w", c.options.InterfaceName, err)
 		}
+
+		canLink = link.(*netlink.Can)
 	}
 
-	if canLink.Attrs().OperState == netlink.OperDown {
+	if !socketCANLinkIsUp(canLink) {
 		c.log.WithField("canName", c.options.InterfaceName).WithField("bitRate", c.options.BitRate).Info("Link is down, bringing up link")
 
-		// ip link set can1 up type can bitrate 250000
-		args := []string{"ip", "link", "set", c.options.InterfaceName, "up", "type", "can", "bitrate", strconv.Itoa(c.options.BitRate)}
+		args := socketCANLinkUpArgs(c.options)
 		cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec G204 -- interface name is argv only.
 		if output, err := cmd.Output(); err != nil {
 			logBase := c.log.WithField("cmd", strings.Join(cmd.Args, " ")).WithField("output", string(output))
@@ -186,6 +179,37 @@ linkReady:
 	return nil
 }
 
+func socketCANLinkIsUp(canLink *netlink.Can) bool {
+	return canLink.Attrs().Flags&net.FlagUp != 0
+}
+
+func socketCANBounceReason(canLink *netlink.Can, options SocketCANChannelOptions) string {
+	if canLink.State == netlink.CAN_STATE_BUS_OFF {
+		return "interface is bus-off"
+	}
+	if canLink.BitRate != uint32(options.BitRate) {
+		return fmt.Sprintf("bitrate is %d, expected %d", canLink.BitRate, options.BitRate)
+	}
+	if options.RestartMilliseconds > 0 && canLink.RestartMs != options.RestartMilliseconds {
+		return fmt.Sprintf("restart delay is %d ms, expected %d ms", canLink.RestartMs, options.RestartMilliseconds)
+	}
+	if options.ForceBounceInterface {
+		return "interface bounce was requested"
+	}
+	return ""
+}
+
+func socketCANLinkUpArgs(options SocketCANChannelOptions) []string {
+	args := []string{
+		"ip", "link", "set", options.InterfaceName, "up", "type", "can",
+		"bitrate", strconv.Itoa(options.BitRate),
+	}
+	if options.RestartMilliseconds > 0 {
+		args = append(args, "restart-ms", strconv.FormatUint(uint64(options.RestartMilliseconds), 10))
+	}
+	return args
+}
+
 // Run starts listening after synchronously opening the CAN bus channel.
 func (c *SocketCANChannel) Run(ctx context.Context) error {
 	if err := c.Start(ctx); err != nil {
@@ -204,14 +228,11 @@ func (c *SocketCANChannel) Run(ctx context.Context) error {
 		Info("Listening on SocketCAN")
 
 	// Start listening for messages
-	if err := bus.ConnectAndPublish(); err != nil {
-		if c.isClosed() && isClosedCANBusError(err) {
-			return nil
-		}
-		return err
+	err := bus.ConnectAndPublish()
+	if c.isClosed() && isClosedCANBusError(err) {
+		return nil
 	}
-
-	return nil
+	return err
 }
 
 var _ Interface = (*SocketCANChannel)(nil)

@@ -3,6 +3,7 @@ package canbus
 import (
 	"context"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vishvananda/netlink"
 )
 
 type alreadyClosedCANReadWriteCloser struct{}
@@ -86,6 +88,43 @@ func TestSocketCANStartReturnsMissingInterfaceError(t *testing.T) {
 	err := channel.Start(context.Background())
 
 	require.ErrorContains(t, err, "no link found")
+}
+
+func TestSocketCANBounceReasonDetectsBusOffWhileAdministrativelyUp(t *testing.T) {
+	link := &netlink.Can{
+		LinkAttrs: netlink.LinkAttrs{Flags: net.FlagUp, OperState: netlink.OperDown},
+		BitRate:   250000,
+		State:     netlink.CAN_STATE_BUS_OFF,
+		RestartMs: 1000,
+	}
+	options := SocketCANChannelOptions{BitRate: 250000, RestartMilliseconds: 1000}
+
+	assert.True(t, socketCANLinkIsUp(link))
+	assert.Equal(t, "interface is bus-off", socketCANBounceReason(link, options))
+}
+
+func TestSocketCANBounceReasonDetectsMissingAutomaticRestart(t *testing.T) {
+	link := &netlink.Can{
+		LinkAttrs: netlink.LinkAttrs{Flags: net.FlagUp},
+		BitRate:   250000,
+		State:     netlink.CAN_STATE_ERROR_ACTIVE,
+	}
+	options := SocketCANChannelOptions{BitRate: 250000, RestartMilliseconds: 1000}
+
+	assert.Equal(t, "restart delay is 0 ms, expected 1000 ms", socketCANBounceReason(link, options))
+}
+
+func TestSocketCANLinkUpArgsIncludeAutomaticRestart(t *testing.T) {
+	options := SocketCANChannelOptions{
+		InterfaceName:       "can0",
+		BitRate:             250000,
+		RestartMilliseconds: 1000,
+	}
+
+	assert.Equal(t, []string{
+		"ip", "link", "set", "can0", "up", "type", "can",
+		"bitrate", "250000", "restart-ms", "1000",
+	}, socketCANLinkUpArgs(options))
 }
 
 func TestSocketCANChannelVCan0WriteFrame(t *testing.T) {
