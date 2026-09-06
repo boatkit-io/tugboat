@@ -3,12 +3,14 @@ package service_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/boatkit-io/tugboat/pkg/service"
 	"github.com/sirupsen/logrus"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 )
 
 type Activity struct {
@@ -244,6 +246,35 @@ func TestServiceRunDoesNotWaitForKillTimeoutWhenKillReturns(t *testing.T) {
 
 	if elapsed := time.Since(start); elapsed > 500*time.Millisecond {
 		t.Fatalf("runner waited for kill timeout after Kill returned; elapsed=%s", elapsed)
+	}
+}
+
+func TestServiceRunLogsContextTerminationAtDebug(t *testing.T) {
+	for name, contextErr := range map[string]error{
+		"canceled":          context.Canceled,
+		"deadline exceeded": context.DeadlineExceeded,
+	} {
+		t.Run(name, func(t *testing.T) {
+			logger, hook := logrustest.NewNullLogger()
+			logger.SetLevel(logrus.DebugLevel)
+			activity := NewActivity("context-error", func(context.Context) error {
+				return fmt.Errorf("activity stopped: %w", contextErr)
+			})
+			runner := service.NewRunner(logger, time.Millisecond, time.Second)
+			runner.RegisterActivities(activity)
+
+			if exitCode := runner.Run(context.Background()); exitCode != 0 {
+				t.Fatalf("runner exit code = %d, want 0", exitCode)
+			}
+
+			entries := hook.AllEntries()
+			if len(entries) != 1 {
+				t.Fatalf("log entries = %d, want 1", len(entries))
+			}
+			if entries[0].Level != logrus.DebugLevel || entries[0].Message != "run activity stopped" {
+				t.Fatalf("log entry = level %s message %q, want debug context stop", entries[0].Level, entries[0].Message)
+			}
+		})
 	}
 }
 

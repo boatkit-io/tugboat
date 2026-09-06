@@ -90,14 +90,13 @@ func (r *Runner) runActivity(ctx context.Context, activity Activity) {
 	go func() {
 		defer close(runReturned)
 		if err := activity.Run(runCtx); err != nil {
-			alog.WithError(err).Error("run activity")
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+				alog.WithError(err).Debug("run activity stopped")
+				return
+			}
 
-			// If the errored channel hasn't already been closed and the error returned
-			// wasn't a context.DeadlineExceeded and wasn't a context.Canceled then we
-			// need to close the signaling channel to shut down all activities.
-			if !r.errored &&
-				!errors.Is(err, context.DeadlineExceeded) &&
-				!errors.Is(err, context.Canceled) {
+			alog.WithError(err).Error("run activity")
+			if !r.errored {
 				r.errored = true
 				close(r.erroredSignal)
 			}
