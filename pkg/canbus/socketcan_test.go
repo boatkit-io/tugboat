@@ -1,7 +1,9 @@
 package canbus
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net"
 	"os"
@@ -125,6 +127,59 @@ func TestSocketCANLinkUpArgsIncludeAutomaticRestart(t *testing.T) {
 		"ip", "link", "set", "can0", "up", "type", "can",
 		"bitrate", "250000", "restart-ms", "1000",
 	}, socketCANLinkUpArgs(options))
+}
+
+func TestSocketCANLinkUpFallsBackWhenAutomaticRestartIsUnsupported(t *testing.T) {
+	var logOutput bytes.Buffer
+	log := logrus.New()
+	log.SetOutput(&logOutput)
+	channel := NewSocketCANChannel(log, SocketCANChannelOptions{
+		InterfaceName:       "can1",
+		BitRate:             250000,
+		RestartMilliseconds: 1000,
+	})
+	var commands [][]string
+	run := func(_ context.Context, args []string) ([]byte, error) {
+		commands = append(commands, append([]string(nil), args...))
+		if len(commands) == 1 {
+			return nil, &socketCANCommandError{
+				err:    errors.New("exit status 2"),
+				stderr: "Error: Device doesn't support restart from Bus Off.\n",
+			}
+		}
+		return nil, nil
+	}
+
+	require.NoError(t, channel.bringUpSocketCANLink(context.Background(), run))
+	assert.Equal(t, [][]string{
+		{"ip", "link", "set", "can1", "up", "type", "can", "bitrate", "250000", "restart-ms", "1000"},
+		{"ip", "link", "set", "can1", "up", "type", "can", "bitrate", "250000"},
+	}, commands)
+	assert.Contains(t, logOutput.String(), "does not support kernel-managed bus-off restart")
+}
+
+func TestSocketCANLinkUpDoesNotHideOtherErrors(t *testing.T) {
+	log := logrus.New()
+	log.SetOutput(io.Discard)
+	channel := NewSocketCANChannel(log, SocketCANChannelOptions{
+		InterfaceName:       "can1",
+		BitRate:             250000,
+		RestartMilliseconds: 1000,
+	})
+	wantErr := &socketCANCommandError{
+		err:    errors.New("exit status 2"),
+		stderr: "RTNETLINK answers: Operation not permitted\n",
+	}
+	commandCount := 0
+	run := func(_ context.Context, _ []string) ([]byte, error) {
+		commandCount++
+		return nil, wantErr
+	}
+
+	err := channel.bringUpSocketCANLink(context.Background(), run)
+
+	assert.ErrorIs(t, err, wantErr)
+	assert.Equal(t, 1, commandCount)
 }
 
 func TestSocketCANChannelVCan0WriteFrame(t *testing.T) {

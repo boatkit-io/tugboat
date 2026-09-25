@@ -39,6 +39,21 @@ type SocketCANChannel struct {
 	closed  bool
 }
 
+type socketCANCommandRunner func(context.Context, []string) ([]byte, error)
+
+type socketCANCommandError struct {
+	err    error
+	stderr string
+}
+
+func (e *socketCANCommandError) Error() string {
+	return e.err.Error()
+}
+
+func (e *socketCANCommandError) Unwrap() error {
+	return e.err
+}
+
 // NewSocketCANChannel returns a Channel object based on SocketCAN and the given options.  ChannelOptions are required settings.
 func NewSocketCANChannel(log *logrus.Logger, options SocketCANChannelOptions) *SocketCANChannel {
 	c := SocketCANChannel{
@@ -125,15 +140,7 @@ func (c *SocketCANChannel) Start(ctx context.Context) error {
 	if !socketCANLinkIsUp(canLink) {
 		c.log.WithField("canName", c.options.InterfaceName).WithField("bitRate", c.options.BitRate).Info("Link is down, bringing up link")
 
-		args := socketCANLinkUpArgs(c.options)
-		cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec G204 -- interface name is argv only.
-		if output, err := cmd.Output(); err != nil {
-			logBase := c.log.WithField("cmd", strings.Join(cmd.Args, " ")).WithField("output", string(output))
-			var exitErr *exec.ExitError
-			if stderrors.As(err, &exitErr) {
-				logBase = logBase.WithField("stderr", string(exitErr.Stderr))
-			}
-			logBase.Error("Ip link set up failed")
+		if err := c.bringUpSocketCANLink(ctx, runSocketCANCommand); err != nil {
 			return err
 		}
 	}
@@ -208,6 +215,62 @@ func socketCANLinkUpArgs(options SocketCANChannelOptions) []string {
 		args = append(args, "restart-ms", strconv.FormatUint(uint64(options.RestartMilliseconds), 10))
 	}
 	return args
+}
+
+func (c *SocketCANChannel) bringUpSocketCANLink(ctx context.Context, run socketCANCommandRunner) error {
+	options := c.options
+	args := socketCANLinkUpArgs(options)
+	output, err := run(ctx, args)
+	if err == nil {
+		return nil
+	}
+
+	if options.RestartMilliseconds > 0 && socketCANAutomaticRestartUnsupported(err) {
+		c.log.WithFields(logrus.Fields{
+			"canName":             options.InterfaceName,
+			"restartMilliseconds": options.RestartMilliseconds,
+		}).Warn("SocketCAN interface does not support kernel-managed bus-off restart; bringing it up without a restart delay")
+		options.RestartMilliseconds = 0
+		args = socketCANLinkUpArgs(options)
+		output, err = run(ctx, args)
+		if err == nil {
+			return nil
+		}
+	}
+
+	logSocketCANCommandError(c.log, args, output, err, "Ip link set up failed")
+	return err
+}
+
+func runSocketCANCommand(ctx context.Context, args []string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec G204 -- interface name is argv only.
+	output, err := cmd.Output()
+	if err == nil {
+		return output, nil
+	}
+
+	var exitErr *exec.ExitError
+	if stderrors.As(err, &exitErr) {
+		return output, &socketCANCommandError{err: err, stderr: string(exitErr.Stderr)}
+	}
+	return output, err
+}
+
+func socketCANAutomaticRestartUnsupported(err error) bool {
+	var commandErr *socketCANCommandError
+	if !stderrors.As(err, &commandErr) {
+		return false
+	}
+	return strings.Contains(strings.ToLower(commandErr.stderr), "support restart from bus off")
+}
+
+func logSocketCANCommandError(log *logrus.Logger, args []string, output []byte, err error, message string) {
+	logBase := log.WithField("cmd", strings.Join(args, " ")).WithField("output", string(output))
+	var commandErr *socketCANCommandError
+	if stderrors.As(err, &commandErr) {
+		logBase = logBase.WithField("stderr", commandErr.stderr)
+	}
+	logBase.Error(message)
 }
 
 // Run starts listening after synchronously opening the CAN bus channel.
