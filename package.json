@@ -1,6 +1,6 @@
 {
   "devDependencies": {
-    "semantic-release": "^25.0.9"
+    "semantic-release": "^26.0.0"
   },
   "dependencies": {
     "@semantic-release/exec": "^7.1.0",
